@@ -1,24 +1,25 @@
-use fresh_eyes::{extract_base_head_sha, fetch_github_data, PullRequestRequest, RequestMethod};
+use fresh_eyes::{extract_base_head_sha, ForkRequest, PullRequest};
 
 #[tokio::main]
 async fn main() {
     // let args = cli::get_args();
-    let params: PullRequestRequest = PullRequestRequest {
-        owner: "bitcoin".to_string(),
-        repo: "bitcoin".to_string(),
-        pull_number: 79,
-    };
-    let url = format!(
-        "https://api.github.com/repos/{}/{}/pulls/{}",
-        params.owner, params.repo, params.pull_number
-    );
-    let res = fetch_github_data(&url, RequestMethod::GET).await;
-    match res {
+    let pull_request_from_github =
+        PullRequest::from_pull_number("bitcoin".to_string(), "bitcoin".to_string(), 79);
+    let response = pull_request_from_github.get().await;
+
+    match response {
         Ok(data) => {
-            // println!("{:?}", data);
             let base_sha = extract_base_head_sha(&data);
             println!("{:?}", base_sha);
+            // create a fork
+            let fork = ForkRequest::new("bitcoin".to_string(), "bitcoin".to_string());
+            let fork_response = fork.fork().await;
+            match fork_response {
+                Ok(res) => println!("forked successfully: {:?}", res),
+                Err(e) => println!("{:?}", e),
+            }
+            // TODO! create a branch
         }
-        Err(e) => println!("{}", e),
+        Err(e) => println!("{:?}", e),
     }
 }
