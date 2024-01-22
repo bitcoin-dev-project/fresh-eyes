@@ -1,12 +1,12 @@
-use dotenv::dotenv;
 use reqwest::{
     header::{self, HeaderMap, AUTHORIZATION},
     Client, StatusCode,
 };
 use serde::Serialize;
 use serde_json::{json, Value};
-use std::{env, fmt};
+use std::fmt;
 use thiserror::Error;
+mod utils;
 
 pub enum RequestMethod {
     GET,
@@ -81,6 +81,8 @@ pub enum FreshEyesError {
     StatusCodeError(ErrorResponse),
     #[error("error forking the repository: {0}")]
     ForkError(String),
+    #[error("authorization token not found")]
+    MissingTokenError,
     #[error("unknown error: {0}")]
     Unknown(String),
 }
@@ -142,7 +144,36 @@ impl PullRequest {
         });
 
         let response = fetch_github_data(&fetch_params, RequestMethod::POST(value)).await;
-        Ok(response?)
+        // hceck if pull request already exists
+        match response {
+            Ok(data) => {
+                return Ok::<Value, FreshEyesError>(data);
+            }
+            Err(e) => match e {
+                FreshEyesError::StatusCodeError(error_response) => {
+                    if error_response.status == StatusCode::UNPROCESSABLE_ENTITY.as_u16() {
+                        return Ok(Value::Object(
+                            serde_json::from_str(
+                                format!(
+                                    r#"
+                                        {{
+                                            "message": "A pull request already exists for {}:{}",
+                                            "status": 422
+                                        }}
+                                        "#,
+                                    self.owner, self.repo
+                                )
+                                .as_str(),
+                            )
+                            .unwrap(),
+                        ));
+                    } else {
+                        return Err(FreshEyesError::StatusCodeError(error_response));
+                    }
+                }
+                _ => return Err(FreshEyesError::Unknown(format!("unknown error: {:?}", e))),
+            },
+        }
     }
 
     /// get a pull request by its number
@@ -285,19 +316,17 @@ impl Branch {
     }
 }
 
-fn get_token() -> String {
-    dotenv().ok();
-    let token = env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN must be set");
-    return "Bearer ".to_string() + &token;
-}
-
 /// fetch data from github
 pub async fn fetch_github_data(url: &str, method: RequestMethod) -> Result<Value, FreshEyesError> {
     let client = Client::new();
     let mut headers = HeaderMap::new();
 
+    let token = match utils::get_or_prompt_token().await {
+        Ok(token) => token,
+        Err(_) => return Err(FreshEyesError::MissingTokenError),
+    };
     headers.insert(header::USER_AGENT, "Fresh Eyes".parse().unwrap());
-    headers.insert(AUTHORIZATION, get_token().parse().unwrap());
+    headers.insert(AUTHORIZATION, token.parse().unwrap());
     headers.insert(
         header::ACCEPT,
         "application/vnd.github.v3+json".parse().unwrap(),
@@ -323,14 +352,23 @@ pub async fn fetch_github_data(url: &str, method: RequestMethod) -> Result<Value
 pub fn extract_pr_details(data: &Value) -> PullRequestDetails {
     let base_sha = data["base"]["sha"].as_str().unwrap_or_default().to_string();
     let head_sha = data["head"]["sha"].as_str().unwrap_or_default().to_string();
-    let base_ref = data["base"]["ref"].as_str().unwrap_or_default().to_string();
+    let base_ref = format!(
+        "{}-fresheyes-{}-{}",
+        data["base"]["user"]["login"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string(),
+        data["base"]["ref"].as_str().unwrap_or_default().to_string(),
+        data["number"].as_u64().unwrap_or_default().to_string()
+    );
     let head_ref = format!(
-        "{}-{}",
+        "{}-fresheyes-{}-{}",
         data["head"]["user"]["login"]
             .as_str()
             .unwrap_or_default()
             .to_string(),
-        data["head"]["ref"].as_str().unwrap_or_default().to_string()
+        data["head"]["ref"].as_str().unwrap_or_default().to_string(),
+        data["number"].as_u64().unwrap_or_default().to_string()
     );
     let title = data["title"].as_str().unwrap_or_default().to_string();
     let body = data["body"].as_str().unwrap_or_default().to_string();

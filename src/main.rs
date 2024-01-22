@@ -25,11 +25,7 @@ async fn run(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
     Branch::new(
         fork_result.owner.clone(),
         fork_result.repo.clone(),
-        format!(
-            "fresheyes-{}-{}",
-            pull_request_details.base_ref.clone(),
-            pull_request.pull_number.unwrap()
-        ),
+        pull_request_details.base_ref.clone(),
         pull_request_details.base_sha.clone(),
     )
     .create()
@@ -51,17 +47,13 @@ async fn run(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
         fork_result.repo.clone(),
         Some(pull_request_details.title),
         Some(pull_request_details.body),
-        format!(
-            "fresheyes-{}-{}",
-            pull_request_details.base_ref.clone(),
-            pull_request.pull_number.unwrap()
-        ),
+        pull_request_details.base_ref,
         pull_request_details.head_ref,
     );
     let pull_request_result = new_pull_request.create().await?;
 
     println!(
-        "Created pull request: {}",
+        "Created fresh pull request: {}",
         pull_request_result["html_url"].as_str().unwrap()
     );
 

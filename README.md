@@ -34,6 +34,18 @@ The project consists of a Rust-based CLI tool and a library that can also be com
 
 ## Usage
 
+### Configuring Authorization
+
+Upon first use, the tool will prompt you for your GitHub personal access token. This token will be stored in memory for the duration of the session and will be used for all subsequent GitHub API calls. If you prefer not to enter the token every time you start a new session, you can manually create a ```.fresheyes``` file in your home directory and store your token there:
+
+```bash
+echo "your_github_token" > ~/.fresheyes
+```
+
+Replace "your_github_token" with your actual GitHub token. This step is optional but recommended for convenience.
+
+#### *Note: Your github token must have global admin priviledges*
+
 ### Running the CLI
 
 After installation, you can run the CLI tool as follows:
