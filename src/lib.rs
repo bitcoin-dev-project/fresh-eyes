@@ -1,10 +1,11 @@
 use dotenv::dotenv;
 use reqwest::{
     header::{self, HeaderMap, AUTHORIZATION},
-    Client,
+    Client, StatusCode,
 };
-use serde_json::Value;
-use std::env;
+use serde::Serialize;
+use serde_json::{json, Value};
+use std::{env, fmt};
 use thiserror::Error;
 
 pub enum RequestMethod {
@@ -13,25 +14,33 @@ pub enum RequestMethod {
 }
 
 #[derive(Debug)]
-pub struct PullRequestShaRef {
+pub struct PullRequestDetails {
     pub base_sha: String,
     pub head_sha: String,
     pub base_ref: String,
     pub head_ref: String,
+    pub title: String,
+    pub body: String,
 }
 
 #[derive(Debug)]
 pub struct PullRequest {
+    /// repository owner
     pub owner: String,
+    /// name of repository
     pub repo: String,
     pub title: Option<String>,
     pub body: Option<String>,
+    /// The name of the branch where your changes are implemented.
+    /// For cross-repository pull requests in the same network, namespace head with a user like this: username:branch.
     pub head: Option<String>,
+    /// The name of the branch you want the changes pulled into.
+    /// This should be an existing branch on the current repository.
     pub base: Option<String>,
     pub pull_number: Option<u32>,
 }
 
-pub struct BranchRequest {
+pub struct Branch {
     pub owner: String,
     pub repo: String,
     pub branch_ref: String,
@@ -43,20 +52,41 @@ pub struct ForkRequest {
     pub repo: String,
 }
 
+#[derive(Debug, Serialize)]
+pub struct ForkResult {
+    pub owner: String,
+    pub repo: String,
+    pub forked_repo: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ErrorResponse {
+    pub message: String,
+    pub status: u16,
+}
+
+impl fmt::Display for ErrorResponse {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
 
 #[derive(Error, Debug)]
 pub enum FreshEyesError {
-    #[error("An error occurred while thhe request was being executed.")]
+    #[error("An error occurred while the request was being executed.")]
     RequestError(#[from] reqwest::Error),
     #[error("value of {0} is undefined")]
     ValueUndefinedError(String),
     #[error("status code is not a OK response: {0}")]
-    StatusCodeError(String),
-    #[error("unknown error")]
-    Unknown,
+    StatusCodeError(ErrorResponse),
+    #[error("error forking the repository: {0}")]
+    ForkError(String),
+    #[error("unknown error: {0}")]
+    Unknown(String),
 }
 
 impl PullRequest {
+    /// construct pull request params to create a pull request
     pub fn new(
         owner: String,
         repo: String,
@@ -76,6 +106,7 @@ impl PullRequest {
         }
     }
 
+    /// construct pull request params to fetch a pull request from github
     pub fn from_pull_number(owner: String, repo: String, pull_number: u32) -> Self {
         Self {
             owner,
@@ -88,6 +119,7 @@ impl PullRequest {
         }
     }
 
+    /// create a pull request
     pub async fn create(&self) -> Result<Value, FreshEyesError> {
         // ensure that the base and head are not None
         if self.base.is_none() || self.head.is_none() {
@@ -101,30 +133,19 @@ impl PullRequest {
             "https://api.github.com/repos/{}/{}/pulls",
             self.owner, self.repo
         );
-        let value = Value::Object(
-            serde_json::from_str(
-                format!(
-                    r#"
-                    {{
-                        "title": "{}",
-                        "body": "{}",
-                        "base": "{}",
-                        "head": "{}"
-                    }}
-                    "#,
-                    self.title.as_ref().unwrap(),
-                    self.body.as_ref().unwrap(),
-                    self.base.as_ref().unwrap(),
-                    self.head.as_ref().unwrap()
-                )
-                .as_str(),
-            )
-            .unwrap(),
-        );
+
+        let value = json!({
+            "title": self.title.as_ref().unwrap(),
+            "body": self.body.as_ref().unwrap(),
+            "base": self.base.as_ref().unwrap(),
+            "head": self.head.as_ref().unwrap()
+        });
+
         let response = fetch_github_data(&fetch_params, RequestMethod::POST(value)).await;
         Ok(response?)
     }
 
+    /// get a pull request by its number
     pub async fn get(&self) -> Result<Value, FreshEyesError> {
         if self.pull_number.is_none() {
             return Err(FreshEyesError::ValueUndefinedError(format!(
@@ -148,7 +169,8 @@ impl ForkRequest {
         Self { owner, repo }
     }
 
-    pub async fn fork(&self) -> Result<Value, FreshEyesError> {
+    /// create a fork
+    pub async fn fork(&self) -> Result<ForkResult, FreshEyesError> {
         let fetch_params = format!(
             "https://api.github.com/repos/{}/{}/forks",
             self.owner, self.repo
@@ -158,7 +180,7 @@ impl ForkRequest {
                 format!(
                     r#"
                 {{
-                    "default_branch_only": "true"
+                    "default_branch_only": "false"
                 }}
                 "#,
                 )
@@ -167,11 +189,31 @@ impl ForkRequest {
             .unwrap(),
         );
         let response = fetch_github_data(&fetch_params, RequestMethod::POST(value)).await;
-        return Ok(response?);
+        match response {
+            Ok(data) => {
+                let forked_repo = data["html_url"].as_str().unwrap_or_default().to_string();
+                let owner = data["owner"]["login"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_string();
+                let fork_result = ForkResult {
+                    owner,
+                    repo: self.repo.clone(),
+                    forked_repo,
+                };
+                return Ok(fork_result);
+            }
+            Err(e) => {
+                return Err(FreshEyesError::ForkError(format!(
+                    "error forking the reposotory: {:?}",
+                    e
+                )))
+            }
+        };
     }
 }
 
-impl BranchRequest {
+impl Branch {
     pub fn new(owner: String, repo: String, branch_ref: String, sha: String) -> Self {
         Self {
             owner,
@@ -181,28 +223,48 @@ impl BranchRequest {
         }
     }
 
+    /// create a new branch from an existing branch
     pub async fn create(&self) -> Result<Value, FreshEyesError> {
         let fetch_params = format!(
             "https://api.github.com/repos/{}/{}/git/refs",
             self.owner, self.repo
         );
-        let value = Value::Object(
-            serde_json::from_str(
-                format!(
-                    r#"
-                    {{
-                        "ref": "refs/heads/{}",
-                        "sha": "{}"
-                    }}
-                    "#,
-                    self.branch_ref, self.sha
-                )
-                .as_str(),
-            )
-            .unwrap(),
+
+        let value = json!(
+            {
+                "ref": format!("refs/heads/{}", self.branch_ref),
+                "sha": self.sha
+            }
         );
-        let response = fetch_github_data(&fetch_params, RequestMethod::POST(value)).await?;
-        return Ok(response);
+        let response = fetch_github_data(&fetch_params, RequestMethod::POST(value)).await;
+        match response {
+            Ok(data) => {
+                return Ok::<Value, FreshEyesError>(data);
+            }
+            Err(e) => match e {
+                FreshEyesError::StatusCodeError(error_response) => {
+                    if error_response.status == StatusCode::UNPROCESSABLE_ENTITY.as_u16() {
+                        return Ok(Value::Object(
+                            serde_json::from_str(
+                                format!(
+                                    r#"
+                                        {{
+                                            "message": "Reference already exists",
+                                            "status": 422
+                                        }}
+                                        "#,
+                                )
+                                .as_str(),
+                            )
+                            .unwrap(),
+                        ));
+                    } else {
+                        return Err(FreshEyesError::StatusCodeError(error_response));
+                    }
+                }
+                _ => return Err(FreshEyesError::Unknown(format!("unknown error: {:?}", e))),
+            },
+        }
     }
 }
 
@@ -212,6 +274,7 @@ fn get_token() -> String {
     return "Bearer ".to_string() + &token;
 }
 
+/// fetch data from github
 pub async fn fetch_github_data(url: &str, method: RequestMethod) -> Result<Value, FreshEyesError> {
     let client = Client::new();
     let mut headers = HeaderMap::new();
@@ -230,26 +293,38 @@ pub async fn fetch_github_data(url: &str, method: RequestMethod) -> Result<Value
 
     // check the status code
     if !response.status().is_success() {
-        return Err(FreshEyesError::StatusCodeError(format!(
-            "status code is not a OK response: {:?}",
-            response.status()
-        )));
+        return Err(FreshEyesError::StatusCodeError(ErrorResponse {
+            message: format!("status code is not a OK response: {:?}", response.status())
+                .to_string(),
+            status: response.status().as_u16(),
+        }));
     }
 
     Ok(response.json().await?)
 }
 
-pub fn extract_base_head_sha(data: &Value) -> PullRequestShaRef {
+pub fn extract_pr_details(data: &Value) -> PullRequestDetails {
     let base_sha = data["base"]["sha"].as_str().unwrap_or_default().to_string();
     let head_sha = data["head"]["sha"].as_str().unwrap_or_default().to_string();
     let base_ref = data["base"]["ref"].as_str().unwrap_or_default().to_string();
-    let head_ref = data["head"]["ref"].as_str().unwrap_or_default().to_string();
+    let head_ref = format!(
+        "{}-{}",
+        data["head"]["user"]["login"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string(),
+        data["head"]["ref"].as_str().unwrap_or_default().to_string()
+    );
+    let title = data["title"].as_str().unwrap_or_default().to_string();
+    let body = data["body"].as_str().unwrap_or_default().to_string();
 
-    PullRequestShaRef {
+    PullRequestDetails {
         base_sha,
         head_sha,
         base_ref,
         head_ref,
+        title,
+        body,
     }
 }
 
@@ -282,7 +357,7 @@ mod tests {
                 "sha": "ccd7fe8de52bbc9210b444838eefb7ddbc880457",
             },
         }"#;
-        let res = extract_base_head_sha(&serde_json::from_str(data).unwrap());
+        let res = extract_pr_details(&serde_json::from_str(data).unwrap());
         assert_eq!(res.base_sha, "ccd7fe8de52bbc9210b444838eefb7ddbc880457");
         assert_eq!(res.head_sha, "8a9cad44a57f1e0057c127ced5078d7e722b9cc8");
         assert_eq!(res.base_ref, "master");
