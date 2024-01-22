@@ -20,9 +20,10 @@ pub async fn get_or_prompt_token() -> Result<String, std::io::Error> {
 
 fn get_token() -> Result<String, std::io::Error> {
     let home = env::var("HOME").unwrap();
-    let config_path_str = format!("{}/fresheyes/.fresheyes", home);
-    let config_path = Path::new(&config_path_str);
+    let config_dir = format!("{}/.fresheyes", home);
+    fs::create_dir_all(&config_dir)?;
 
+    let config_path = Path::new(&config_dir).join("fresheyes");
     if config_path.exists() {
         let config = fs::read_to_string(config_path)?;
         Ok(format!("Bearer {}", config))
@@ -34,9 +35,9 @@ fn get_token() -> Result<String, std::io::Error> {
         stdin().read_line(&mut save_token).unwrap();
         match save_token.trim().to_lowercase().as_str() {
             "y" => {
-                fs::write(config_path, &token)?;
+                fs::write(&config_path, &token)?;
                 println!(
-                    "Token saved! You can delete it at any time by deleting the file at ~/.fresheyes"
+                    "Token saved! You can delete it at any time by deleting the file at ~/.fresheyes/fresheyes"
                 );
                 Ok(format!("Bearer {}", token))
             }
