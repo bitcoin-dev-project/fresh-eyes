@@ -5,6 +5,7 @@ use reqwest::{
 };
 use serde_json::Value;
 use std::env;
+use thiserror::Error;
 
 pub enum RequestMethod {
     GET,
@@ -42,22 +43,17 @@ pub struct ForkRequest {
     pub repo: String,
 }
 
-#[derive(Debug)]
-pub enum Error {
-    Reqwest(reqwest::Error),
-    Io(std::io::Error),
-}
 
-impl From<reqwest::Error> for Error {
-    fn from(err: reqwest::Error) -> Self {
-        Error::Reqwest(err)
-    }
-}
-
-impl From<std::io::Error> for Error {
-    fn from(err: std::io::Error) -> Self {
-        Error::Io(err)
-    }
+#[derive(Error, Debug)]
+pub enum FreshEyesError {
+    #[error("An error occurred while thhe request was being executed.")]
+    RequestError(#[from] reqwest::Error),
+    #[error("value of {0} is undefined")]
+    ValueUndefinedError(String),
+    #[error("status code is not a OK response: {0}")]
+    StatusCodeError(String),
+    #[error("unknown error")]
+    Unknown,
 }
 
 impl PullRequest {
@@ -92,13 +88,12 @@ impl PullRequest {
         }
     }
 
-    pub async fn create(&self) -> Result<Value, Error> {
+    pub async fn create(&self) -> Result<Value, FreshEyesError> {
         // ensure that the base and head are not None
         if self.base.is_none() || self.head.is_none() {
-            // return an error
-            return Err(Error::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "base and head must be set",
+            return Err(FreshEyesError::ValueUndefinedError(format!(
+                "{:?} {:?}",
+                self.base, self.head
             )));
         }
 
@@ -130,11 +125,11 @@ impl PullRequest {
         Ok(response?)
     }
 
-    pub async fn get(&self) -> Result<Value, Error> {
+    pub async fn get(&self) -> Result<Value, FreshEyesError> {
         if self.pull_number.is_none() {
-            return Err(Error::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "pull_number must be set",
+            return Err(FreshEyesError::ValueUndefinedError(format!(
+                "{:?}",
+                self.pull_number
             )));
         }
         let fetch_params = format!(
@@ -153,7 +148,7 @@ impl ForkRequest {
         Self { owner, repo }
     }
 
-    pub async fn fork(&self) -> Result<Value, Error> {
+    pub async fn fork(&self) -> Result<Value, FreshEyesError> {
         let fetch_params = format!(
             "https://api.github.com/repos/{}/{}/forks",
             self.owner, self.repo
@@ -186,7 +181,7 @@ impl BranchRequest {
         }
     }
 
-    pub async fn create(&self) -> Result<Value, Error> {
+    pub async fn create(&self) -> Result<Value, FreshEyesError> {
         let fetch_params = format!(
             "https://api.github.com/repos/{}/{}/git/refs",
             self.owner, self.repo
@@ -217,7 +212,7 @@ fn get_token() -> String {
     return "Bearer ".to_string() + &token;
 }
 
-pub async fn fetch_github_data(url: &str, method: RequestMethod) -> Result<Value, Error> {
+pub async fn fetch_github_data(url: &str, method: RequestMethod) -> Result<Value, FreshEyesError> {
     let client = Client::new();
     let mut headers = HeaderMap::new();
 
@@ -235,9 +230,9 @@ pub async fn fetch_github_data(url: &str, method: RequestMethod) -> Result<Value
 
     // check the status code
     if !response.status().is_success() {
-        return Err(Error::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            format!("status code: {}", response.status()),
+        return Err(FreshEyesError::StatusCodeError(format!(
+            "status code is not a OK response: {:?}",
+            response.status()
         )));
     }
 
