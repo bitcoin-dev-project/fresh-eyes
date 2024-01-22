@@ -77,7 +77,7 @@ pub enum FreshEyesError {
     RequestError(#[from] reqwest::Error),
     #[error("value of {0} is undefined")]
     ValueUndefinedError(String),
-    #[error("status code is not a OK response: {0}")]
+    #[error("{0}")]
     StatusCodeError(ErrorResponse),
     #[error("error forking the repository: {0}")]
     ForkError(String),
@@ -160,7 +160,24 @@ impl PullRequest {
             self.pull_number.unwrap()
         );
         let response = fetch_github_data(&fetch_params, RequestMethod::GET).await;
-        return Ok(response?);
+        match response {
+            Ok(data) => {
+                return Ok::<Value, FreshEyesError>(data);
+            }
+            Err(e) => {
+                if let FreshEyesError::StatusCodeError(error_response) = e {
+                    if error_response.status == StatusCode::NOT_FOUND.as_u16() {
+                        return Err(FreshEyesError::StatusCodeError(ErrorResponse {
+                            message: format!("pull request not found!").to_string(),
+                            status: error_response.status,
+                        }));
+                    } else {
+                        return Err(FreshEyesError::StatusCodeError(error_response));
+                    }
+                }
+                return Err(FreshEyesError::Unknown(format!("unknown error: {:?}", e)));
+            }
+        }
     }
 }
 
