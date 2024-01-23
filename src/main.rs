@@ -57,7 +57,7 @@ async fn run(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
     )
     .await?;
 
-    if pull_request_result["html_url"].as_str() == Some("ok") {
+    if pull_request_result["html_url"].as_str().is_some() {
         println!(
             "Created fresh pull request: {}",
             pull_request_result["html_url"].as_str().unwrap_or_default()
