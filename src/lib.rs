@@ -82,6 +82,8 @@ pub struct ReviewComment {
     pub side: String,
     pub start_side: Option<String>,
     pub url: String,
+    #[serde(rename = "html_url")]
+    pub html_url: String,
     #[serde(rename = "subject_type")]
     pub subject_type: Option<String>,
     #[serde(rename = "created_at")]

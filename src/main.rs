@@ -77,7 +77,7 @@ async fn run(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
         .iter()
         .map(|x| {
             let mut map = HashMap::new();
-            map.insert(x.user.login.clone(), x.url.clone());
+            map.insert(x.user.login.clone(), x.html_url.clone());
             map
         })
         .collect();
