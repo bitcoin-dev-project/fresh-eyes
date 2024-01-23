@@ -2,7 +2,7 @@ use reqwest::{
     header::{self, HeaderMap, AUTHORIZATION},
     Client, StatusCode,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::fmt;
 use thiserror::Error;
@@ -24,32 +24,33 @@ pub struct PullRequestDetails {
 }
 
 #[derive(Debug)]
-pub struct PullRequest {
+pub struct PullRequest<'a> {
     /// repository owner
-    pub owner: String,
+    pub owner: &'a str,
     /// name of repository
-    pub repo: String,
-    pub title: Option<String>,
-    pub body: Option<String>,
+    pub repo: &'a str,
+    pub title: Option<&'a str>,
+    pub body: Option<&'a str>,
     /// The name of the branch where your changes are implemented.
     /// For cross-repository pull requests in the same network, namespace head with a user like this: username:branch.
-    pub head: Option<String>,
+    pub head: Option<&'a str>,
     /// The name of the branch you want the changes pulled into.
     /// This should be an existing branch on the current repository.
-    pub base: Option<String>,
+    pub base: Option<&'a str>,
     pub pull_number: Option<u32>,
 }
 
-pub struct Branch {
-    pub owner: String,
-    pub repo: String,
-    pub branch_ref: String,
-    pub sha: String,
+pub struct Branch<'a> {
+    pub owner: &'a str,
+    pub repo: &'a str,
+    pub branch_ref: &'a str,
+    pub sha: &'a str,
 }
 
-pub struct ForkRequest {
-    pub owner: String,
-    pub repo: String,
+#[derive(Debug, Serialize)]
+pub struct ForkRequest<'a> {
+    pub owner: &'a str,
+    pub repo: &'a str,
 }
 
 #[derive(Debug, Serialize)]
@@ -59,6 +60,36 @@ pub struct ForkResult {
     pub forked_repo: String,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UserFields {
+    pub login: String,
+}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ReviewComment {
+    pub id: u64,
+    pub body: String,
+    #[serde(rename = "commit_id")]
+    pub commit_id: String,
+    pub path: String,
+    pub line: Option<u64>,
+    #[serde(rename = "start_line")]
+    pub start_line: Option<u64>,
+    #[serde(rename = "original_line")]
+    pub original_line: Option<u64>,
+    pub position: Option<u64>,
+    #[serde(rename = "original_position")]
+    pub original_position: Option<u64>,
+    pub side: String,
+    pub start_side: Option<String>,
+    pub url: String,
+    #[serde(rename = "subject_type")]
+    pub subject_type: Option<String>,
+    #[serde(rename = "created_at")]
+    pub created_at: String,
+    #[serde(rename = "updated_at")]
+    pub updated_at: String,
+    pub user: UserFields,
+}
 #[derive(Debug, Serialize)]
 pub struct ErrorResponse {
     pub message: String,
@@ -87,15 +118,15 @@ pub enum FreshEyesError {
     Unknown(String),
 }
 
-impl PullRequest {
+impl<'a> PullRequest<'a> {
     /// construct pull request params to create a pull request
     pub fn new(
-        owner: String,
-        repo: String,
-        title: Option<String>,
-        body: Option<String>,
-        base: String,
-        head: String,
+        owner: &'a str,
+        repo: &'a str,
+        title: Option<&'a str>,
+        body: Option<&'a str>,
+        base: &'a str,
+        head: &'a str,
     ) -> Self {
         Self {
             owner,
@@ -109,7 +140,7 @@ impl PullRequest {
     }
 
     /// construct pull request params to fetch a pull request from github
-    pub fn from_pull_number(owner: String, repo: String, pull_number: u32) -> Self {
+    pub fn from_pull_number(owner: &'a str, repo: &'a str, pull_number: u32) -> Self {
         Self {
             owner,
             repo,
@@ -137,10 +168,10 @@ impl PullRequest {
         );
 
         let value = json!({
-            "title": self.title.as_ref().unwrap(),
-            "body": self.body.as_ref().unwrap(),
-            "base": self.base.as_ref().unwrap(),
-            "head": self.head.as_ref().unwrap()
+            "title": self.title,
+            "body": self.body,
+            "base": self.base,
+            "head": self.head
         });
 
         let response = fetch_github_data(&fetch_params, RequestMethod::POST(value)).await;
@@ -152,21 +183,13 @@ impl PullRequest {
             Err(e) => match e {
                 FreshEyesError::StatusCodeError(error_response) => {
                     if error_response.status == StatusCode::UNPROCESSABLE_ENTITY.as_u16() {
-                        return Ok(Value::Object(
-                            serde_json::from_str(
-                                format!(
-                                    r#"
-                                        {{
-                                            "message": "A pull request already exists for {}:{}",
-                                            "status": 422
-                                        }}
-                                        "#,
-                                    self.owner, self.repo
-                                )
-                                .as_str(),
-                            )
-                            .unwrap(),
-                        ));
+                        let base = self.base.unwrap_or_default();
+                        let head = self.head.unwrap_or_default();
+                        let json_message = serde_json::json!({
+                            "message": format!("A pull request already exists for {:?}<-->{:?}", base, head),
+                            "status": 422
+                        });
+                        return Ok(json_message);
                     } else {
                         return Err(FreshEyesError::StatusCodeError(error_response));
                     }
@@ -212,8 +235,8 @@ impl PullRequest {
     }
 }
 
-impl ForkRequest {
-    pub fn new(owner: String, repo: String) -> Self {
+impl<'a> ForkRequest<'a> {
+    pub fn new(owner: &'a str, repo: &'a str) -> Self {
         Self { owner, repo }
     }
 
@@ -223,19 +246,9 @@ impl ForkRequest {
             "https://api.github.com/repos/{}/{}/forks",
             self.owner, self.repo
         );
-        let value = Value::Object(
-            serde_json::from_str(
-                format!(
-                    r#"
-                {{
-                    "default_branch_only": "false"
-                }}
-                "#,
-                )
-                .as_str(),
-            )
-            .unwrap(),
-        );
+        let value = json!({
+            "default_branch_only": false
+        });
         let response = fetch_github_data(&fetch_params, RequestMethod::POST(value)).await;
         match response {
             Ok(data) => {
@@ -246,7 +259,7 @@ impl ForkRequest {
                     .to_string();
                 let fork_result = ForkResult {
                     owner,
-                    repo: self.repo.clone(),
+                    repo: self.repo.to_string(),
                     forked_repo,
                 };
                 return Ok(fork_result);
@@ -261,8 +274,8 @@ impl ForkRequest {
     }
 }
 
-impl Branch {
-    pub fn new(owner: String, repo: String, branch_ref: String, sha: String) -> Self {
+impl<'a> Branch<'a> {
+    pub fn new(owner: &'a str, repo: &'a str, branch_ref: &'a str, sha: &'a str) -> Self {
         Self {
             owner,
             repo,
@@ -292,20 +305,10 @@ impl Branch {
             Err(e) => match e {
                 FreshEyesError::StatusCodeError(error_response) => {
                     if error_response.status == StatusCode::UNPROCESSABLE_ENTITY.as_u16() {
-                        return Ok(Value::Object(
-                            serde_json::from_str(
-                                format!(
-                                    r#"
-                                        {{
-                                            "message": "Reference already exists",
-                                            "status": 422
-                                        }}
-                                        "#,
-                                )
-                                .as_str(),
-                            )
-                            .unwrap(),
-                        ));
+                        return Ok(json!({
+                            "message": format!("Branch already exists!"),
+                            "status": 422
+                        }));
                     } else {
                         return Err(FreshEyesError::StatusCodeError(error_response));
                     }
@@ -316,7 +319,20 @@ impl Branch {
     }
 }
 
-/// fetch data from github
+pub async fn get_pull_request_reviews(
+    owner: &str,
+    repo: &str,
+    pull_number: u64,
+) -> Result<Vec<ReviewComment>, FreshEyesError> {
+    let fetch_params = format!(
+        "https://api.github.com/repos/{}/{}/pulls/{}/comments",
+        owner, repo, pull_number
+    );
+    let response = fetch_github_data(&fetch_params, RequestMethod::GET).await?;
+    serde_json::from_value::<Vec<ReviewComment>>(response)
+        .map_err(|e| FreshEyesError::Unknown(format!("Deserialization error: {:?}", e)))
+}
+
 pub async fn fetch_github_data(url: &str, method: RequestMethod) -> Result<Value, FreshEyesError> {
     let client = Client::new();
     let mut headers = HeaderMap::new();
