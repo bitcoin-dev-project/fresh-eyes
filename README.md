@@ -27,10 +27,10 @@ The project consists of a Rust-based CLI tool and a library that can also be com
 2. **Build the Project:**
 
     ```bash
-    cargo build --release
+    make build-all
     ```
 
-    This command compiles the project and generates an executable in `target/release/`.
+    This command compiles the project (server and client) and generates an executable in `target/release/`.
 
 ## Usage
 
@@ -78,7 +78,7 @@ cargo run -- bitcoin bitcoin 8149
 
 ### WebAssembly (WASM)
 
-The core functionalities of this tool are also available as a WASM module, allowing integration into web clients. To compile the library to WASM, use:
+The core functionalities of this tool are also available as a WASM module, allowing integration into web clients. This is a still WIP.
 
 ## Contributing
 
