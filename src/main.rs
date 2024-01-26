@@ -2,7 +2,14 @@ mod cli;
 
 use cli::CliArgs;
 use fresh_eyes::{extract_pr_details, get_pull_request_reviews, Branch, ForkRequest, PullRequest};
-use std::{collections::HashMap, process::exit};
+use std::{env, io, process::exit};
+use tokio::process::Command as AsyncCommand;
+
+async fn run_npm_command() -> Result<(), io::Error> {
+    let mut cmd = AsyncCommand::new("make").arg("run-js").spawn()?;
+
+    cmd.wait().await.map(|_| ())
+}
 
 async fn run(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
     let CliArgs {
@@ -57,35 +64,39 @@ async fn run(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
     )
     .await?;
 
-    if pull_request_result["html_url"].as_str().is_some() {
-        println!(
-            "Created fresh pull request: {}",
-            pull_request_result["html_url"].as_str().unwrap_or_default()
-        );
-    } else {
-        println!(
-            "{}",
-            pull_request_result["message"].as_str().unwrap_or_default()
-        );
+    let url = pull_request_result["html_url"]
+        .as_str()
+        .map(String::from)
+        .or_else(|| {
+            if pull_request_reviews.len() > 0 {
+                Some(format!(
+                    "https://github.com/{}/{}/pull/{}",
+                    &fork.owner, &fork.repo, &pr_number
+                ))
+            } else {
+                None
+            }
+        });
+
+    match url {
+        Some(pr_url) => {
+            println!("Pull Request URL: {}", pr_url);
+            env::set_var("PR_URL", &pr_url);
+
+            if let Err(e) = run_npm_command().await {
+                println!("Error: failed to start npm process {}", e);
+            } else {
+                println!("npm command executed successfully");
+            }
+        }
+        None => {
+            println!(
+                "{}",
+                pull_request_result["message"].as_str().unwrap_or_default()
+            );
+            println!("No reviews found for this pull request");
+        }
     }
-    println!(
-        "Pull request review comments count: {}",
-        pull_request_reviews.len()
-    );
-
-    let pull_request_reviews_urls: Vec<HashMap<String, String>> = pull_request_reviews
-        .iter()
-        .map(|x| {
-            let mut map = HashMap::new();
-            map.insert(x.user.login.clone(), x.html_url.clone());
-            map
-        })
-        .collect();
-
-    println!(
-        "{}",
-        serde_json::to_string(&pull_request_reviews_urls).unwrap()
-    );
 
     Ok(())
 }
