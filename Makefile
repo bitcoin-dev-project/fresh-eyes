@@ -18,6 +18,9 @@ run-js:
 run:
 	cargo run -- ${OWNER} ${REPO} ${PR_NO}
 
+run-grpc:
+	cargo run --bin fresheyes-grpc
+
 cli help:
 	cargo run -- --help
 

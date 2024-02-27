@@ -60,6 +60,16 @@ pub struct ForkResult {
     pub forked_repo: String,
 }
 
+impl ForkResult {
+    pub fn new(owner: String, repo: String, forked_repo: String) -> Self {
+        Self {
+            owner,
+            repo,
+            forked_repo,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UserFields {
     pub login: String,
@@ -178,27 +188,25 @@ impl<'a> PullRequest<'a> {
 
         let response = fetch_github_data(&fetch_params, RequestMethod::POST(value)).await;
         // hceck if pull request already exists
-        match response {
-            Ok(data) => {
-                return Ok::<Value, FreshEyesError>(data);
-            }
+        return match response {
+            Ok(data) => Ok::<Value, FreshEyesError>(data),
             Err(e) => match e {
                 FreshEyesError::StatusCodeError(error_response) => {
                     if error_response.status == StatusCode::UNPROCESSABLE_ENTITY.as_u16() {
                         let base = self.base.unwrap_or_default();
                         let head = self.head.unwrap_or_default();
-                        let json_message = serde_json::json!({
+                        let json_message = json!({
                             "message": format!("A pull request already exists for {:?}<-->{:?}", base, head),
                             "status": 422
                         });
-                        return Ok(json_message);
+                        Ok(json_message)
                     } else {
-                        return Err(FreshEyesError::StatusCodeError(error_response));
+                        Err(FreshEyesError::StatusCodeError(error_response))
                     }
                 }
-                _ => return Err(FreshEyesError::Unknown(format!("unknown error: {:?}", e))),
+                _ => Err(FreshEyesError::Unknown(format!("unknown error: {:?}", e))),
             },
-        }
+        };
     }
 
     /// get a pull request by its number
@@ -216,24 +224,22 @@ impl<'a> PullRequest<'a> {
             self.pull_number.unwrap()
         );
         let response = fetch_github_data(&fetch_params, RequestMethod::GET).await;
-        match response {
-            Ok(data) => {
-                return Ok::<Value, FreshEyesError>(data);
-            }
+        return match response {
+            Ok(data) => Ok::<Value, FreshEyesError>(data),
             Err(e) => {
                 if let FreshEyesError::StatusCodeError(error_response) = e {
-                    if error_response.status == StatusCode::NOT_FOUND.as_u16() {
-                        return Err(FreshEyesError::StatusCodeError(ErrorResponse {
-                            message: format!("pull request not found!").to_string(),
+                    return if error_response.status == StatusCode::NOT_FOUND.as_u16() {
+                        Err(FreshEyesError::StatusCodeError(ErrorResponse {
+                            message: "pull request not found!".to_string(),
                             status: error_response.status,
-                        }));
+                        }))
                     } else {
-                        return Err(FreshEyesError::StatusCodeError(error_response));
-                    }
+                        Err(FreshEyesError::StatusCodeError(error_response))
+                    };
                 }
-                return Err(FreshEyesError::Unknown(format!("unknown error: {:?}", e)));
+                Err(FreshEyesError::Unknown(format!("unknown error: {:?}", e)))
             }
-        }
+        };
     }
 }
 
@@ -252,7 +258,7 @@ impl<'a> ForkRequest<'a> {
             "default_branch_only": false
         });
         let response = fetch_github_data(&fetch_params, RequestMethod::POST(value)).await;
-        match response {
+        return match response {
             Ok(data) => {
                 let forked_repo = data["html_url"].as_str().unwrap_or_default().to_string();
                 let owner = data["owner"]["login"]
@@ -264,14 +270,12 @@ impl<'a> ForkRequest<'a> {
                     repo: self.repo.to_string(),
                     forked_repo,
                 };
-                return Ok(fork_result);
+                Ok(fork_result)
             }
-            Err(e) => {
-                return Err(FreshEyesError::ForkError(format!(
-                    "error forking the reposotory: {:?}",
-                    e
-                )))
-            }
+            Err(e) => Err(FreshEyesError::ForkError(format!(
+                "error forking the reposotory: {:?}",
+                e
+            ))),
         };
     }
 }
@@ -300,24 +304,22 @@ impl<'a> Branch<'a> {
             }
         );
         let response = fetch_github_data(&fetch_params, RequestMethod::POST(value)).await;
-        match response {
-            Ok(data) => {
-                return Ok::<Value, FreshEyesError>(data);
-            }
+        return match response {
+            Ok(data) => Ok::<Value, FreshEyesError>(data),
             Err(e) => match e {
                 FreshEyesError::StatusCodeError(error_response) => {
                     if error_response.status == StatusCode::UNPROCESSABLE_ENTITY.as_u16() {
-                        return Ok(json!({
+                        Ok(json!({
                             "message": format!("Branch already exists!"),
                             "status": 422
-                        }));
+                        }))
                     } else {
-                        return Err(FreshEyesError::StatusCodeError(error_response));
+                        Err(FreshEyesError::StatusCodeError(error_response))
                     }
                 }
-                _ => return Err(FreshEyesError::Unknown(format!("unknown error: {:?}", e))),
+                _ => Err(FreshEyesError::Unknown(format!("unknown error: {:?}", e))),
             },
-        }
+        };
     }
 }
 

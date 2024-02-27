@@ -4,7 +4,7 @@
 
 This tool is designed to streamline the code review process by integrating with GitHub's API. It checks out a pull request (PR) branch, generates patches, and inserts GNU patch(1)-style diff comments, indicating where previous reviewers have left comments. This allows a user to conveniently review a pull request without distractions of the review comments, enhancing the efficiency of the review process.
 
-It is targetted to noobs to a project who wants to undersrand the project code base better by reviewing past and present pul request without comment distractions.
+It is targeted to noobs to a project who wants to understand the project code base better by reviewing past and present pul request without comment distractions.
 
 The project consists of a Rust-based CLI tool and a library that can also be compiled to WebAssembly (WASM), allowing for flexible use in various environments.
 
@@ -47,7 +47,7 @@ Replace "your_github_token" with your actual GitHub token. This step is optional
 Follow this [guide](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token) to create your Personal Access Token.
 #### *Select "all repositories" if you intend to use this tool with future repositories or repositories you haven't forked yet*
 
-#### *Note: Your github token must have the following priviledges*
+#### *Note: Your GitHub token must have the following privileges*
 - Administration
 - Contents
 - Pull requests
@@ -70,15 +70,25 @@ Example:
 cargo run -- bitcoin bitcoin 8149
 ```
 
-**TODOS!**
+### Setting up GRPC server and client
 
-- generate javascript bindings
+The server and client can be run separately(independent of the CLI). The server is responsible for handling the GitHub API requests and the client(NextJS) is responsible for handling the user interface.
 
-- use bindings in client application
+#### Running the server
 
-### WebAssembly (WASM)
+- To run the server, use the following command:
 
-The core functionalities of this tool are also available as a WASM module, allowing integration into web clients. This is a still WIP.
+- copy the `.env.example` file to `.env` and fill in the required environment variables.
+
+```bash
+make run-grpc
+```
+- The server will be running on `localhost:50051` to which the client will connect.
+- You will need to set up a client that can interact with the gRPC server for API requests.
+
+#### Running the client
+
+- WIP
 
 ## Contributing
 
