@@ -190,7 +190,6 @@ impl GitHubService for GitHubServiceImpl {
             }
         }
     }
-
     async fn process_pull_request(
         &self,
         request: Request<PullRequest>,
@@ -291,13 +290,13 @@ impl GitHubService for GitHubServiceImpl {
         let reply = Empty {};
         Ok(Response::new(reply))
     }
-
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
-    let addr = "[::1]:50051".parse()?;
+    let port = env::var("PORT").unwrap_or_else(|_| String::from("8000"));
+    let addr = format!("0.0.0.0:{}", port).parse()?;
     let github_token = env::var("GITHUB_TOKEN").expect("GITHUB_TOKEN must be set");
     let github_service = GitHubServiceImpl::new(github_token);
 
