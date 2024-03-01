@@ -73,6 +73,10 @@ message PrResponse {
   string pr_url = 1;
 }
 
+message Empty {
+  
+}
+
 // Define the service with the necessary RPC methods.
 service GitHubService {
   rpc ForkRepository(ForkRequest) returns (ForkResult);
@@ -80,4 +84,6 @@ service GitHubService {
   rpc CreatePullRequest(PullRequest) returns (PullRequestDetails);
   rpc ProcessPullRequest(PullRequest) returns (PrResponse);
 //  rpc GetPullRequestReviews(PullRequest) returns (ReviewComment);
+  rpc check(Empty) returns (Empty);
+
 }
