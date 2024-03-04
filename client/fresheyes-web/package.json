@@ -1,0 +1,32 @@
+{
+  "name": "fresheyes-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@improbable-eng/grpc-web": "^0.15.0",
+    "next": "14.1.0",
+    "next-auth": "^4.24.4",
+    "react": "^18",
+    "react-dom": "^18",
+    "ts-protoc-gen": "^0.15.0"
+  },
+  "devDependencies": {
+    "@protobuf-ts/protoc": "^2.8.1",
+    "@types/google-protobuf": "^3.15.6",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.0.1",
+    "google-protobuf": "^3.21.0",
+    "postcss": "^8",
+    "protoc-gen-grpc": "^2.0.3",
+    "tailwindcss": "^3.3.0",
+    "typescript": "^5"
+  }
+}
