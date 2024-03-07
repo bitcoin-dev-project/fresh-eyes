@@ -8,6 +8,8 @@ declare module "next-auth" {
         accessToken?: string
         user: {
             email: string
+            login?: string
+            html_url?: string
         } & DefaultSession["user"]
     }
 
@@ -18,12 +20,14 @@ declare module "next-auth" {
     interface User {
         email: string
         name: string
+        login: string
     }
 
     interface GhExtendedProfile extends Profile {
         email: string
         login: string
         avatar_url: string
+        html_url: string
         [key]?: string
     }
 }

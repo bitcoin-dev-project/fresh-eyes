@@ -1,4 +1,4 @@
-import NextAuth, { NextAuthOptions, Session, User } from "next-auth"
+import NextAuth, { GhExtendedProfile, NextAuthOptions, Session } from "next-auth"
 import { JWT } from "next-auth/jwt"
 import GithubProvider from "next-auth/providers/github"
 
@@ -10,23 +10,25 @@ export const authOptions: NextAuthOptions = {
         })
     ],
     callbacks: {
-        async jwt({ token, account }) {
+        async jwt({ token, account, profile }) {
             if (account) {
                 token.accessToken = account.access_token
+                token.profile = profile
             }
             return token
         },
         async session({
             session,
             token,
-            user
         }: {
             session: Session
             token: JWT
-            user: User
         }) {
             if (token.accessToken) {
                 session.accessToken = token.accessToken as string
+                const { login, html_url } = token.profile as GhExtendedProfile
+                session.user.login = login
+                session.user.html_url = html_url
             }
             return session
         }

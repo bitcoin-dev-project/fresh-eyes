@@ -1,18 +1,16 @@
 "use client";
 
 import React, { useState } from "react";
-import { PullRequest } from "@/proto/fresheyes_pb";
 
 import Modal from "../modal/Modal";
-import { useGrpcClient } from "@/app/hooks/useGrpcClinet";
+import { processPr } from "./proceess-pr";
+import { PullRequest } from "@/types";
 
 const FormSection = () => {
-  const { client } = useGrpcClient();
-
   const [link, setLink] = useState("");
   const [loading, setLoading] = useState({ loader: false, modal: false });
   const [error, setError] = useState("");
-  const [formValues, setFormValues] = useState<{ owner: string; repo: string; pull_number: number }>({
+  const [formValues, setFormValues] = useState<PullRequest>({
     owner: "bitcoin",
     repo: "bitcoin",
     pull_number: 0,
@@ -23,13 +21,11 @@ const FormSection = () => {
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     event.preventDefault();
     const { value, name } = event.target;
-
     setFormValues((prev) => ({ ...prev, [name]: value }));
   };
 
   const processPullRequest = async () => {
     setLink("");
-    setFormValues({ owner: "", repo: "", pull_number: 0 });
     setLoading({ loader: false, modal: false });
 
     if (pull_number === 0) {
@@ -38,23 +34,20 @@ const FormSection = () => {
     }
     setLoading({ loader: true, modal: false });
 
-    const pr = new PullRequest();
-    pr.setOwner(owner.trim());
-    pr.setRepo(repo.trim());
-    pr.setPullNumber(pull_number);
-
-    const res = client.processPullRequest(pr, (error, result) => {
-      if (error) {
-        setError(`Error: ${error.message} Please try again or contact support info@bitcoindevs.xyz`);
-        console.log({ error });
-        setLoading({ loader: false, modal: false });
-      } else {
-        setLink(result?.getPrUrl()!);
-        setLoading({ loader: false, modal: true });
-      }
+    const response = await processPr({
+      owner: owner.trim(),
+      repo: repo.trim(),
+      pull_number,
     });
-
-    return res;
+    if (response.error || !response.data) {
+      setError(response.error);
+      setLoading({ loader: false, modal: false });
+    } else {
+      const data = response.data;
+      setLink(data.pr_url!);
+      setLoading({ loader: false, modal: true });
+      setFormValues({ owner: "", repo: "", pull_number: 0 });
+    }
   };
 
   return (
