@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y \
     libz-dev
 
 # Build the application
-RUN cargo build --release
+RUN cargo build --release --bin fresheyes-grpc
 
 # Run the application
 ENTRYPOINT ["./target/release/fresheyes-grpc"]

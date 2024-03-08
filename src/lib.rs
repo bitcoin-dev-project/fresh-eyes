@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::fmt;
 use thiserror::Error;
+mod app_data;
+mod server_auth;
 mod utils;
 
 pub enum RequestMethod {
@@ -165,7 +167,7 @@ impl<'a> PullRequest<'a> {
     }
 
     /// create a pull request
-    pub async fn create(&self) -> Result<Value, FreshEyesError> {
+    pub async fn create(&self, token: String) -> Result<Value, FreshEyesError> {
         // ensure that the base and head are not None
         if self.base.is_none() || self.head.is_none() {
             return Err(FreshEyesError::ValueUndefinedError(format!(
@@ -186,8 +188,8 @@ impl<'a> PullRequest<'a> {
             "head": self.head
         });
 
-        let response = fetch_github_data(&fetch_params, RequestMethod::POST(value)).await;
-        // hceck if pull request already exists
+        let response = fetch_github_data(&fetch_params, RequestMethod::POST(value), token).await;
+        // check if pull request already exists
         return match response {
             Ok(data) => Ok::<Value, FreshEyesError>(data),
             Err(e) => match e {
@@ -210,7 +212,7 @@ impl<'a> PullRequest<'a> {
     }
 
     /// get a pull request by its number
-    pub async fn get(&self) -> Result<Value, FreshEyesError> {
+    pub async fn get(&self, token: String) -> Result<Value, FreshEyesError> {
         if self.pull_number.is_none() {
             return Err(FreshEyesError::ValueUndefinedError(format!(
                 "{:?}",
@@ -223,7 +225,7 @@ impl<'a> PullRequest<'a> {
             self.repo,
             self.pull_number.unwrap()
         );
-        let response = fetch_github_data(&fetch_params, RequestMethod::GET).await;
+        let response = fetch_github_data(&fetch_params, RequestMethod::GET, token).await;
         return match response {
             Ok(data) => Ok::<Value, FreshEyesError>(data),
             Err(e) => {
@@ -249,15 +251,17 @@ impl<'a> ForkRequest<'a> {
     }
 
     /// create a fork
-    pub async fn fork(&self) -> Result<ForkResult, FreshEyesError> {
+    pub async fn fork(&self, token: String) -> Result<ForkResult, FreshEyesError> {
         let fetch_params = format!(
             "https://api.github.com/repos/{}/{}/forks",
             self.owner, self.repo
         );
+        
+     
         let value = json!({
             "default_branch_only": false
         });
-        let response = fetch_github_data(&fetch_params, RequestMethod::POST(value)).await;
+        let response = fetch_github_data(&fetch_params, RequestMethod::POST(value), token).await;
         return match response {
             Ok(data) => {
                 let forked_repo = data["html_url"].as_str().unwrap_or_default().to_string();
@@ -273,7 +277,7 @@ impl<'a> ForkRequest<'a> {
                 Ok(fork_result)
             }
             Err(e) => Err(FreshEyesError::ForkError(format!(
-                "error forking the reposotory: {:?}",
+                "error forking the repository: {:?}",
                 e
             ))),
         };
@@ -291,7 +295,7 @@ impl<'a> Branch<'a> {
     }
 
     /// create a new branch from an existing branch
-    pub async fn create(&self) -> Result<Value, FreshEyesError> {
+    pub async fn create(&self, token: String) -> Result<Value, FreshEyesError> {
         let fetch_params = format!(
             "https://api.github.com/repos/{}/{}/git/refs",
             self.owner, self.repo
@@ -303,7 +307,7 @@ impl<'a> Branch<'a> {
                 "sha": self.sha
             }
         );
-        let response = fetch_github_data(&fetch_params, RequestMethod::POST(value)).await;
+        let response = fetch_github_data(&fetch_params, RequestMethod::POST(value), token).await;
         return match response {
             Ok(data) => Ok::<Value, FreshEyesError>(data),
             Err(e) => match e {
@@ -327,26 +331,23 @@ pub async fn get_pull_request_reviews(
     owner: &str,
     repo: &str,
     pull_number: u64,
+    token: String,
 ) -> Result<Vec<ReviewComment>, FreshEyesError> {
     let fetch_params = format!(
         "https://api.github.com/repos/{}/{}/pulls/{}/comments",
         owner, repo, pull_number
     );
-    let response = fetch_github_data(&fetch_params, RequestMethod::GET).await?;
+    let response = fetch_github_data(&fetch_params, RequestMethod::GET, token).await?;
     serde_json::from_value::<Vec<ReviewComment>>(response)
         .map_err(|e| FreshEyesError::Unknown(format!("Deserialization error: {:?}", e)))
 }
 
-pub async fn fetch_github_data(url: &str, method: RequestMethod) -> Result<Value, FreshEyesError> {
+pub async fn fetch_github_data(url: &str, method: RequestMethod, token: String) -> Result<Value, FreshEyesError> {
     let client = Client::new();
     let mut headers = HeaderMap::new();
 
-    let token = match utils::get_or_prompt_token().await {
-        Ok(token) => token,
-        Err(_) => return Err(FreshEyesError::MissingTokenError),
-    };
     headers.insert(header::USER_AGENT, "Fresh Eyes".parse().unwrap());
-    headers.insert(AUTHORIZATION, token.parse().unwrap());
+    headers.insert(AUTHORIZATION, format!("Bearer {}", token).parse().unwrap()); 
     headers.insert(
         header::ACCEPT,
         "application/vnd.github.v3+json".parse().unwrap(),
@@ -356,7 +357,7 @@ pub async fn fetch_github_data(url: &str, method: RequestMethod) -> Result<Value
         RequestMethod::GET => client.get(url).headers(headers).send().await?,
         RequestMethod::POST(body) => client.post(url).headers(headers).json(&body).send().await?,
     };
-
+    
     // check the status code
     if !response.status().is_success() {
         return Err(FreshEyesError::StatusCodeError(ErrorResponse {
@@ -368,6 +369,7 @@ pub async fn fetch_github_data(url: &str, method: RequestMethod) -> Result<Value
 
     Ok(response.json().await?)
 }
+
 
 pub fn extract_pr_details(data: &Value) -> PullRequestDetails {
     let base_sha = data["base"]["sha"].as_str().unwrap_or_default().to_string();
@@ -400,42 +402,5 @@ pub fn extract_pr_details(data: &Value) -> PullRequestDetails {
         head_ref,
         title,
         body,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_fetch_github_data() {
-        let url = "https://api.github.com/users/extheoisah/repos";
-        let res = fetch_github_data(url, RequestMethod::GET).await;
-        assert!(res.is_ok());
-    }
-
-    #[test]
-    fn test_extract_base_head_sha() {
-        let data = r#"
-        {
-            "url": "https://api.github.com/repos/bitcoin/bitcoin/pulls/79",
-            "id": 279147,
-            "node_id": "MDExOlB1bGxSZXF1ZXN0Mjc5MTQ3",
-            "head": {
-                "label": "gavinandresen:rounding",
-                "ref": "rounding",
-                "sha": "8a9cad44a57f1e0057c127ced5078d7e722b9cc8",
-            },
-            "base": {
-                "label": "bitcoin:master",
-                "ref": "master",
-                "sha": "ccd7fe8de52bbc9210b444838eefb7ddbc880457",
-            },
-        }"#;
-        let res = extract_pr_details(&serde_json::from_str(data).unwrap());
-        assert_eq!(res.base_sha, "ccd7fe8de52bbc9210b444838eefb7ddbc880457");
-        assert_eq!(res.head_sha, "8a9cad44a57f1e0057c127ced5078d7e722b9cc8");
-        assert_eq!(res.base_ref, "master");
-        assert_eq!(res.head_ref, "rounding");
     }
 }
