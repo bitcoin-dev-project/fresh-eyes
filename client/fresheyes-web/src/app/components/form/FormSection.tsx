@@ -35,14 +35,14 @@ const FormSection = () => {
       return;
     }
     setLoading({ loader: true, modal: false });
-    const isBotInstalled = await checkIfAppInstalledInRepo({
-      repoName: repo.trim(),
-    });
-    if (!isBotInstalled.success || !isBotInstalled.installed) {
-      setIsBotInstalled(false);
-      setLoading({ loader: false, modal: true });
-      return;
-    }
+    // const isBotInstalled = await checkIfAppInstalledInRepo({
+    //   repoName: repo.trim(),
+    // });
+    // if (!isBotInstalled.success || !isBotInstalled.installed) {
+    //   setIsBotInstalled(false);
+    //   setLoading({ loader: false, modal: true });
+    //   return;
+    // }
 
     const response = await processPr({
       owner: owner.trim(),
@@ -57,7 +57,7 @@ const FormSection = () => {
       setLink(data.pr_url!);
       setLoading({ loader: false, modal: true });
       setFormValues({ owner: "", repo: "", pull_number: 0 });
-      setError('')
+      setError("");
     }
   };
 
@@ -111,10 +111,11 @@ const FormSection = () => {
           setLoading={setLoading}
           title="SUCCESS"
           message="Click the button to view the pull request"
+          linkName="View PR"
         />
       ) : null}
 
-      {!isBotInstalled && loading.modal ? (
+      {/* {!isBotInstalled && loading.modal ? (
         <Modal
           loading={loading}
           setLoading={setLoading}
@@ -123,7 +124,7 @@ const FormSection = () => {
           linkName="Install FreshEyes Bot"
           href={`https://github.com/apps/fresheyes-bot/installations/new`}
         />
-      ) : null}
+      ) : null} */}
     </>
   );
 };
