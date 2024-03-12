@@ -57,6 +57,7 @@ const FormSection = () => {
       setLink(data.pr_url!);
       setLoading({ loader: false, modal: true });
       setFormValues({ owner: "", repo: "", pull_number: 0 });
+      setError('')
     }
   };
 
@@ -120,7 +121,7 @@ const FormSection = () => {
           title="FreshEyes Bot not installed in the repository"
           message="Please install the FreshEyes bot in the repository to proceed. The bot is required to recreate the review comments associated with the pull request."
           linkName="Install FreshEyes Bot"
-          href={`https://github.com/apps/fresheyes/installations/new`}
+          href={`https://github.com/apps/fresheyes-bot/installations/new`}
         />
       ) : null}
     </>
