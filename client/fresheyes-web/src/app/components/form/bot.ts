@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { App } from "@octokit/app";
+import { Octokit } from "octokit";
 
 type InstallationCheckResult = {
   success: boolean;
@@ -14,11 +15,7 @@ const app = new App({
   privateKey: process.env.GITHUB_PRIVATE_KEY ?? "",
 });
 
-export async function checkIfAppInstalledInRepo({
-  repoName,
-}: {
-  repoName: string;
-}): Promise<InstallationCheckResult> {
+export async function checkIfAppInstalledInRepo({ repoName }: { repoName: string }): Promise<InstallationCheckResult> {
   const session = await auth();
   if (!session || !session?.user?.login || !session?.accessToken) {
     return {
@@ -31,24 +28,14 @@ export async function checkIfAppInstalledInRepo({
   try {
     const installations = await app.octokit.request("GET /app/installations");
     for (const installation of installations.data) {
-      if (
-        installation.account &&
-        installation.account.login.toLowerCase() ===
-          session.user.login.toLowerCase()
-      ) {
-        const installationOctokit = await app.getInstallationOctokit(
-          installation.id
-        );
+      if (installation.account && installation.account.login.toLowerCase() === session.user.login.toLowerCase()) {
+        const installationOctokit = await app.getInstallationOctokit(installation.id);
 
         try {
-          const repos = await installationOctokit.request(
-            "GET /installation/repositories"
-          );
+          const repos = await installationOctokit.request("GET /installation/repositories");
 
           // Check if the specific repo is in the list of accessible repos for the installation
-          const repoInstalled = repos.data.repositories.some(
-            (repo) => repo.full_name.toLowerCase() === loginRepoName
-          );
+          const repoInstalled = repos.data.repositories.some((repo) => repo.full_name.toLowerCase() === loginRepoName);
 
           return {
             success: true,
@@ -56,10 +43,7 @@ export async function checkIfAppInstalledInRepo({
             error: null,
           };
         } catch (repoError) {
-          console.error(
-            "Error accessing repositories for installation:",
-            repoError
-          );
+          console.error("Error accessing repositories for installation:", repoError);
           return {
             error: "Error accessing repositories for installation",
             success: false,
@@ -83,3 +67,22 @@ export async function checkIfAppInstalledInRepo({
     installed: false,
   };
 }
+
+export const forkRepository = async ({ owner, repo }: { owner: string; repo: string }) => {
+  const token = await auth();
+  const octokit = new Octokit({ auth: token?.accessToken });
+
+  try {
+    const forkRepo = await octokit.rest.repos.createFork({ owner, repo });
+
+    return {
+      data: forkRepo.data,
+      error: null,
+    };
+  } catch (error) {
+    return {
+      data: null,
+      error: `Unable to perform this action at this time`,
+    };
+  }
+};

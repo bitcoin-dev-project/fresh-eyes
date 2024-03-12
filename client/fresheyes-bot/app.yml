@@ -15,8 +15,8 @@
 default_events:
   - issue_comment
   - issues
-- pull_request
-- pull_request_review_comment
+  - pull_request
+  - pull_request_review_comment
 
 # The set of permissions needed by the GitHub App. The format of the object uses
 # the permission name for the key (for example, issues) and the access type for

@@ -10,11 +10,12 @@ const Modal = ({
   setLoading,
 }: {
   href?: string;
-  loading: { loader: boolean; modal: boolean };
+  loading: { loader: boolean; modal: boolean, isInstalledModal: boolean };
   setLoading: React.Dispatch<
     React.SetStateAction<{
       loader: boolean;
       modal: boolean;
+      isInstalledModal: boolean
     }>
   >;
   title?: string;
@@ -31,7 +32,7 @@ const Modal = ({
             </section>
           ) : null}
 
-          {loading.modal ? (
+          {loading.modal || loading.isInstalledModal ? (
             <>
               <div
                 className="text-lg absolute top-3 right-4 md:right-6 border p-2 px-4 cursor-pointer"
@@ -40,6 +41,7 @@ const Modal = ({
                     ...prev,
                     loader: false,
                     modal: false,
+                    isInstalledModal: false
                   }))
                 }
               >
