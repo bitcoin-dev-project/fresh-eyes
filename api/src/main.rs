@@ -5,7 +5,7 @@ use actix_web::{
     get, post, web, App, HttpMessage, HttpRequest, HttpResponse, HttpServer, Responder,
 };
 use dotenv::dotenv;
-use fresh_eyes::{
+use fresh_eyes_api::{
     extract_pr_details, Branch as LibBranch, ForkRequest as LibForkRequest,
     PullRequest as LibPullRequest,
 };
