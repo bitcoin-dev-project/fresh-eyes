@@ -1,16 +1,9 @@
-mod app_data;
 mod cli;
 
 use cli::CliArgs;
 use fresh_eyes::{extract_pr_details, get_pull_request_reviews, Branch, ForkRequest, PullRequest};
-use std::{env, io, process::exit};
-use tokio::process::Command as AsyncCommand;
+use std::{process::exit};
 
-async fn run_npm_command() -> Result<(), io::Error> {
-    let mut cmd = AsyncCommand::new("make").arg("run-js").spawn()?;
-
-    cmd.wait().await.map(|_| ())
-}
 
 async fn run(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
     let CliArgs {
@@ -35,8 +28,8 @@ async fn run(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
         &pull_request_details.base_ref,
         &pull_request_details.base_sha,
     )
-    .create()
-    .await?;
+        .create()
+        .await?;
 
     // create a branch for the head repository
     Branch::new(
@@ -45,8 +38,8 @@ async fn run(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
         &pull_request_details.head_ref,
         &pull_request_details.head_sha,
     )
-    .create()
-    .await?;
+        .create()
+        .await?;
 
     // create a pull request
     let new_pull_request = PullRequest::new(
@@ -63,7 +56,7 @@ async fn run(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
         &fork.repo,
         pull_request.pull_number.clone().unwrap().into(),
     )
-    .await?;
+        .await?;
 
     let url = pull_request_result["html_url"]
         .as_str()
@@ -82,13 +75,6 @@ async fn run(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
     match url {
         Some(pr_url) => {
             println!("Pull Request URL: {}", pr_url);
-            env::set_var("PR_URL", &pr_url);
-
-            if let Err(e) = run_npm_command().await {
-                println!("Error: failed to start npm process {}", e);
-            } else {
-                println!("npm command executed successfully");
-            }
         }
         None => {
             println!(

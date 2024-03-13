@@ -4,11 +4,13 @@
 
 This tool is designed to streamline the code review process by integrating with GitHub's API. It checks out a pull request (PR) branch, generates patches, and inserts GNU patch(1)-style diff comments, indicating where previous reviewers have left comments. This allows a user to conveniently review a pull request without distractions of the review comments, enhancing the efficiency of the review process.
 
-It is targeted to noobs to a project who wants to understand the project code base better by reviewing past and present pul request without comment distractions.
+It is targeted to noobs to a project who wants to understand the project code base better by reviewing past and present pull request without comment distractions.
 
-The project consists of a Rust-based CLI tool and a library that can also be compiled to WebAssembly (WASM), allowing for flexible use in various environments.
+The project consists of a Rust-based CLI tool and an API to help client to connect to our core functions.
 
 ## Installation
+
+- The project implements a cli application, an API server and a Next.js client.
 
 ### Prerequisites
 
@@ -24,15 +26,7 @@ The project consists of a Rust-based CLI tool and a library that can also be com
     cd fresheyes-ref-impl
     ```
 
-2. **Build the Project:**
-
-    ```bash
-    make build-all
-    ```
-
-    This command compiles the project (server and client) and generates an executable in `target/release/`.
-
-## Usage
+### Using the CLI
 
 ### Configuring Authorization
 
@@ -57,6 +51,10 @@ Follow this [guide](https://docs.github.com/en/authentication/keeping-your-accou
 After installation, you can run the CLI tool as follows:
 
 ```bash
+cd cli
+```
+
+```bash
 cargo run -- owner repo pr_number
 ```
 
@@ -64,44 +62,54 @@ cargo run -- owner repo pr_number
 - `repo`: Repository name.
 - `pr_number`: Pull request number.
 
+- The cli will automatically ask for you GitHub token if it's not found in the `.fresheyes` file.
+
 Example:
 
 ```bash
 cargo run -- bitcoin bitcoin 8149
 ```
 
-### Setting up GRPC server and client
+- You can also run the CLI with the `cargo run cli --help` flag to see the available options:
 
-The server and client can be run separately(independent of the CLI). The server is responsible for handling the GitHub API requests and the client(NextJS) is responsible for handling the user interface.
+
+### Setting up API server and client
+
+The server and client can be run separately(independent of the CLI). The API is responsible for handling the GitHub API requests and the client(NextJS) is responsible for handling the user interface.
 
 #### Running the server
 
 - To run the server, use the following command:
 
-- copy the `.env.example` file to `.env` and fill in the required environment variables.
+> from the project root directory
 
 ```bash
-make run-grpc
+cd api
 ```
-- The server will be running on `localhost:50051` to which the client will connect.
-- You will need to set up a client that can interact with the gRPC server for API requests.
+- copy the `.env.example` file to `.env` and fill in the required environment variables.
+```bash
+cargo run
+```
+- The server will be running on `localhost:8080` to which the client will connect.
+- You will need to set up a client that can interact with the API server.
+- You have to authenticate with GitHub to use the API server with your authorisation token you generated from GitHub earlier.
+
 
 #### Running the client
-
 - WIP
 
-## Contributing
 
+## Contributing
 Contributions to this project are welcome! Please follow these steps:
 
 1. Fork the repository.
-2. Create a new branch for your feature or fix.
-3. Commit your changes.
-4. Push to the branch.
-5. Create a new Pull Request.
+2. Create an issue you want to work on.
+3. Create a new branch or your feature or fix.
+4. Commit your changes.
+5. Push to the branch.
+6. Create a new Pull Request.
 
 ## Motivation
-
 This tool is a product of the ideas by [David Harding](https://gist.github.com/harding). The gist highlighting his thought process and idea development can be found [here](https://gist.github.com/harding/3b4bb6c4cd003d7bf372e13d06f5363f).
 
 ---
