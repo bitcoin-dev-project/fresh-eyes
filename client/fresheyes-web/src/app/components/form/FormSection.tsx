@@ -120,7 +120,28 @@ const FormSection = () => {
           loading={loading}
           setLoading={setLoading}
           title='FreshEyes Bot not installed in the repository'
-          message='Please install the FreshEyes bot in the repository to proceed. The bot is required to recreate the review comments associated with the pull request.'
+          message={
+            <section className=''>
+              <p>
+                Please install the FreshEyes bot in the repository to proceed. The bot is required to recreate the review comments associated with the
+                pull request.
+              </p>
+              <p className=' font-semibold text-base underline pt-4 pb-2'>Steps</p>
+              <ol className=' list-decimal list-inside flex flex-col gap-2 py-4 pt-0'>
+                <li>Follow the installation link below to start.</li>
+                <li>Select where you want to install fresheyes bot.</li>
+                <li>
+                  Click on the <span className='bg-gray-600 leading-[250%] p-1 font-semibold rounded-sm text-xs'>Select repositories</span> to add the
+                  repository you want to install the bot in.
+                </li>
+                <li>
+                  Click on the <span className=' bg-green-500 p-1 leading-[250%] font-semibold rounded-sm text-xs'>Save</span> button to complete the
+                  process.
+                </li>
+                <li>After a successful installation you'll be redirected to start using Fresheyes.</li>
+              </ol>
+            </section>
+          }
           linkName='Install FreshEyes Bot'
           href={`https://github.com/apps/${INSTALLATION_URL}/installations/new`}
         />
