@@ -29,7 +29,9 @@ export = (robot: Probot) => {
     const pull_number = Number(label.split("-").slice(-1));
 
     if (!owner || !repo || !pull_number) {
-      throw Error(`Could not get parent repo information ${owner} ${repo} ${pull_number}`);
+      throw Error(
+        `Could not get parent repo information ${owner} ${repo} ${pull_number}`
+      );
     }
 
     const { data: reviewComments } = await context.octokit.pulls.listReviewComments({ owner, repo, pull_number });
