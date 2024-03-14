@@ -373,26 +373,53 @@ pub async fn fetch_github_data(url: &str, method: RequestMethod, token: String) 
 pub fn extract_pr_details(data: &Value) -> PullRequestDetails {
     let base_sha = data["base"]["sha"].as_str().unwrap_or_default().to_string();
     let head_sha = data["head"]["sha"].as_str().unwrap_or_default().to_string();
-    let base_ref = format!(
-        "{}-fresheyes-{}-{}",
-        data["base"]["user"]["login"]
-            .as_str()
-            .unwrap_or_default()
-            .to_string(),
-        data["base"]["ref"].as_str().unwrap_or_default().to_string(),
-        data["number"].as_u64().unwrap_or_default().to_string()
-    );
-    let head_ref = format!(
-        "{}-fresheyes-{}-{}",
-        data["head"]["user"]["login"]
-            .as_str()
-            .unwrap_or_default()
-            .to_string(),
-        data["head"]["ref"].as_str().unwrap_or_default().to_string(),
-        data["number"].as_u64().unwrap_or_default().to_string()
-    );
     let title = data["title"].as_str().unwrap_or_default().to_string();
     let body = data["body"].as_str().unwrap_or_default().to_string();
+
+    let mut base_ref = String::new();
+    let mut head_ref = String::new();
+
+    if let Ok(environment) = std::env::var("ENV") {
+        if environment == "staging" {
+            base_ref = format!(
+                "{}-fresheyes-staging-{}-{}",
+                data["base"]["user"]["login"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_string(),
+                data["base"]["ref"].as_str().unwrap_or_default().to_string(),
+                data["number"].as_u64().unwrap_or_default().to_string()
+            );
+            head_ref = format!(
+                "{}-fresheyes-staging-{}-{}",
+                data["head"]["user"]["login"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_string(),
+                data["head"]["ref"].as_str().unwrap_or_default().to_string(),
+                data["number"].as_u64().unwrap_or_default().to_string()
+            );
+        } else {
+            base_ref = format!(
+                "{}-fresheyes-{}-{}",
+                data["base"]["user"]["login"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_string(),
+                data["base"]["ref"].as_str().unwrap_or_default().to_string(),
+                data["number"].as_u64().unwrap_or_default().to_string()
+            );
+            head_ref = format!(
+                "{}-fresheyes-{}-{}",
+                data["head"]["user"]["login"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_string(),
+                data["head"]["ref"].as_str().unwrap_or_default().to_string(),
+                data["number"].as_u64().unwrap_or_default().to_string()
+            );
+        }
+    }
 
     PullRequestDetails {
         base_sha,
