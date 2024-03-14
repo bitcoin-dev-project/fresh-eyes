@@ -2,10 +2,18 @@ import { Probot } from "probot";
 import { generateBody, groupCommentsFn } from "./util";
 
 export = (robot: Probot) => {
+  const staging = process.env.BOT_ENV ?? ""
   robot.on(["pull_request.opened"], async (context) => {
     /**  Get information about the pull request **/
     const { owner: forked_owner, repo: forked_repo, pull_number: forked_pull_number } = context.pullRequest();
-    const { label } = context.payload.pull_request.base;
+    const { label, ref, repo: { default_branch} } = context.payload.pull_request.base;
+    const branch_name = ref.split("-").slice(0, 3).join("-");
+    const shouldRun = branch_name === `${forked_repo}-fresheyes-${staging ? "staging" : default_branch}`;
+    if (!shouldRun) {
+      robot.log("Branch is not the correct branch");
+      return;
+    }
+    
     const res = await context.octokit.repos.get({ owner: forked_owner, repo: forked_repo });
 
     const owner = res.data.parent?.owner.login;
