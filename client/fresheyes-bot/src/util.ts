@@ -23,12 +23,35 @@ export function groupCommentsFn<T extends Array<Record<string, any>>>(data: T) {
   return comments;
 }
 
+const formatTime = (arg: string) => {
+  const [, year, month, day, hour, minute, second] = arg.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/) as RegExpMatchArray;
+
+  const date = `${year}/${month}/${day}, ${hour}:${minute}:${second}`;
+
+  return date;
+};
+
+export const modifyPullRequestBody = (
+  args: string | null
+): {
+  body: string;
+} => {
+  if (!args) return { body: "" };
+
+  const body = args
+    .split(" ")
+    .map((word) => (word.startsWith("#") || word.startsWith("@") ? "`" + word.trim() + "`" : word))
+    .join(" ");
+
+  return { body };
+};
+
 export function getReviewBody<T extends Array<Array<Record<string, any>>>>(value: T) {
   const list = value.flat().map((x) => ({ html_url: x.html_url, created_at: x.created_at }));
 
   const formatString = list
     .map((val, idx) => {
-      return `- [comment link ${idx + 1}](${val.html_url}) at ${new Date(val.created_at).toLocaleString()}`;
+      return `- [comment link ${idx + 1}](${val.html_url}) at ${formatTime(val.created_at)}`;
     })
     .join("\n");
 
@@ -40,7 +63,7 @@ export function getReviewBody<T extends Array<Array<Record<string, any>>>>(value
 }
 
 export function getIssueBody<T extends Pick<T, "html_url" | "created_at">>(arg: T, idx: number) {
-  const formatString = `- [comment link ${idx + 1}](${arg.html_url}) at ${new Date(arg.created_at as string | Date).toLocaleString()}`;
+  const formatString = `- [comment link ${idx + 1}](${arg.html_url}) at ${formatTime(arg.created_at as string)}`;
 
   const body = `An author commented here with\n\n${formatString}.`;
 
