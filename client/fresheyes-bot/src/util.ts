@@ -55,7 +55,7 @@ export function getReviewBody<T extends Array<Array<Record<string, any>>>>(value
     })
     .join("\n");
 
-  const body = `${value.length === 1 ? "An author" : `${value.length} authors`} commented here with\n\n${formatString}.`;
+  const body = `${value.length === 1 ? "An author" : `${value.length} authors`} commented here with:\n\n${formatString}.`;
 
   const comment = value.flat().sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
 
@@ -65,7 +65,7 @@ export function getReviewBody<T extends Array<Array<Record<string, any>>>>(value
 export function getIssueBody<T extends Pick<T, "html_url" | "created_at">>(arg: T, idx: number) {
   const formatString = `- [comment link ${idx + 1}](${arg.html_url}) at ${formatTime(arg.created_at as string)}`;
 
-  const body = `An author commented here with\n\n${formatString}.`;
+  const body = `An author commented here with:\n\n${formatString}.`;
 
   return { body };
 }
