@@ -23,13 +23,18 @@ export function groupCommentsFn<T extends Array<Record<string, any>>>(data: T) {
   return comments;
 }
 
-const formatTime = (arg: string) => {
-  const [, year, month, day, hour, minute, second] = arg.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/) as RegExpMatchArray;
+function formatTime(arg: string) {
+  const date = new Date(arg);
 
-  const date = `${year}/${month}/${day}, ${hour}:${minute}:${second}`;
+  const year = date.getUTCFullYear();
+  const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
+  const day = date.getUTCDate().toString().padStart(2, "0");
+  const hours = date.getUTCHours().toString().padStart(2, "0");
+  const minutes = date.getUTCMinutes().toString().padStart(2, "0");
+  const seconds = date.getUTCSeconds().toString().padStart(2, "0");
 
-  return date;
-};
+  return `${year}/${month}/${day}, ${hours}:${minutes}:${seconds} UTC`;
+}
 
 export const modifyPullRequestBody = (
   args: string | null
