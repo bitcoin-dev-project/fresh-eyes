@@ -33,6 +33,7 @@ const FormSection = () => {
 
   const processPullRequest = async () => {
     setLink("");
+    setError("");
     setLoading({ loader: false, modal: false, isInstalledModal: false });
 
     if (pull_number === 0) {
