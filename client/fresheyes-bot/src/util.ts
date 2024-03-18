@@ -45,7 +45,7 @@ export const modifyPullRequestBody = (
 
   const body = args
     .split(" ")
-    .map((word) => (word.startsWith("#") || word.startsWith("@") ? "`" + word.trim() + "`" : word))
+    .map((word) => (word.startsWith("#") || word.startsWith("@") || word.startsWith("https://github.com") ? "`" + word.trim() + "`" : word))
     .join(" ");
 
   return { body };
@@ -55,8 +55,8 @@ export function getReviewBody<T extends Array<Array<Record<string, any>>>>(value
   const list = value.flat().map((x) => ({ html_url: x.html_url, created_at: x.created_at }));
 
   const formatString = list
-    .map((val, idx) => {
-      return `- [comment link ${idx + 1}](${val.html_url}) at ${formatTime(val.created_at)}`;
+    .map((val) => {
+      return `- comment link ${"`" + val.html_url + "`"} at ${formatTime(val.created_at)}`;
     })
     .join("\n");
 
@@ -67,8 +67,8 @@ export function getReviewBody<T extends Array<Array<Record<string, any>>>>(value
   return { body, comment };
 }
 
-export function getIssueBody<T extends Pick<T, "html_url" | "created_at">>(arg: T, idx: number) {
-  const formatString = `- [comment link ${idx + 1}](${arg.html_url}) at ${formatTime(arg.created_at as string)}`;
+export function getIssueBody<T extends Pick<T, "html_url" | "created_at">>(arg: T) {
+  const formatString = `- comment link ${"`" + arg.html_url + "`"} at ${formatTime(arg.created_at as string)}`;
 
   const body = `An author commented here with:\n\n${formatString}.`;
 
@@ -95,8 +95,8 @@ export function extractData<R extends Array<Record<string, any>>, I extends Arra
     };
   });
 
-  const extract_issues = issues.map((i, idx) => {
-    const { body } = getIssueBody(i, idx);
+  const extract_issues = issues.map((i) => {
+    const { body } = getIssueBody(i);
     return {
       body,
       created_at: i.created_at,
