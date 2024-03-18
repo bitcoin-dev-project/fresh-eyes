@@ -68,12 +68,22 @@ export = (robot: Probot) => {
       issue_number: pull_number,
     });
 
+    const { data: approvalComments } = await context.octokit.pulls.listReviews({
+      owner,
+      repo,
+      pull_number,
+    });
+
     try {
-      if (!reviewComments && !issueComments) {
+      if (!reviewComments && !issueComments && !approvalComments) {
         return;
       }
 
-      const { allComments } = extractData(reviewComments, issueComments);
+      const { allComments } = extractData(
+        reviewComments,
+        issueComments,
+        approvalComments
+      );
 
       await Promise.all(
         allComments.map(async (val) => {
@@ -95,6 +105,15 @@ export = (robot: Probot) => {
               repo: forked_repo,
               issue_number: forked_pull_number,
               body: val.body,
+            });
+          } else if (val.key === "pull_review") {
+            await context.octokit.pulls.createReview({
+              owner: forked_owner,
+              repo: forked_repo,
+              pull_number: forked_pull_number,
+              body: val.body,
+              commit_id: val.commit_id,
+              event: val.event,
             });
           } else {
             return;

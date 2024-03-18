@@ -4,6 +4,7 @@ type Comment = {
   path?: string;
   side?: "LEFT" | "RIGHT" | undefined;
   line?: number;
+  event?: "APPROVE" | "REQUEST_CHANGES" | "COMMENT";
   created_at: string;
   key: string;
 };
@@ -36,34 +37,62 @@ function formatTime(arg: string) {
   return `${year}/${month}/${day}, ${hours}:${minutes}:${seconds} UTC`;
 }
 
-export function getReviewBody<T extends Array<Array<Record<string, any>>>>(value: T) {
-  const list = value.flat().map((x) => ({ html_url: x.html_url, created_at: x.created_at }));
+export function getReviewBody<T extends Array<Array<Record<string, any>>>>(
+  value: T
+) {
+  const list = value
+    .flat()
+    .map((x) => ({ html_url: x.html_url, created_at: x.created_at }));
 
   const formatString = list
     .map((val) => {
-      return `- comment link ${"`" + val.html_url + "`"} at ${formatTime(val.created_at)}`;
+      return `- comment link ${"`" + val.html_url + "`"} at ${formatTime(
+        val.created_at
+      )}`;
     })
     .join("\n");
 
-  const body = `${value.length === 1 ? "An author" : `${value.length} authors`} commented here with:\n\n${formatString}.`;
+  const body = `${
+    value.length === 1 ? "An author" : `${value.length} authors`
+  } commented here with:\n\n${formatString}.`;
 
-  const comment = value.flat().sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
+  const comment = value
+    .flat()
+    .sort(
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    )[0];
 
   return { body, comment };
 }
 
-export function getIssueBody<T extends Pick<T, "html_url" | "created_at">>(arg: T) {
-  const formatString = `- comment link ${"`" + arg.html_url + "`"} at ${formatTime(arg.created_at as string)}`;
+export function getIssueBody<T extends Pick<T, "html_url" | "created_at">>(
+  arg: T
+) {
+  const formatString = `- comment link ${
+    "`" + arg.html_url + "`"
+  } at ${formatTime(arg.created_at as string)}`;
 
   const body = `An author commented here with:\n\n${formatString}.`;
 
   return { body };
 }
 
-export function extractData<R extends Array<Record<string, any>>, I extends Array<Pick<Record<string, any>, "html_url" | "created_at">>>(
-  reviews: R,
-  issues: I
-) {
+export function getPullReviewBody<T extends Record<string, any>>(arg: T) {
+  const formatString = `- comment link ${
+    "`" + arg.html_url + "`"
+  } at ${formatTime(arg.submitted_at as string)}`;
+
+  const body = `An author commented here with:\n\n${formatString}.`;
+
+  return { body };
+}
+
+export function extractData<
+  R extends Array<Record<string, any>>,
+  I extends Array<Pick<Record<string, any>, "html_url" | "created_at">>,
+  T extends Array<Record<string, any>>
+>(reviews: R, issues: I, pull_reviews: T) {
   const groupReviews = groupCommentsFn(reviews);
 
   const extract_reviews = Object.entries(groupReviews).map(([key, value]) => {
@@ -89,8 +118,36 @@ export function extractData<R extends Array<Record<string, any>>, I extends Arra
     };
   });
 
-  const allComments: Comment[] = [...extract_reviews, ...extract_issues].sort(
-    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  const extract_pull_reviews = pull_reviews.map((review) => {
+    const { body } = getPullReviewBody(review);
+    let event: "APPROVE" | "REQUEST_CHANGES" | "COMMENT" = "COMMENT";
+    switch (review.state) {
+      case "APPROVED":
+        event = "APPROVE";
+        break;
+      case "CHANGES_REQUESTED":
+        event = "REQUEST_CHANGES";
+        break;
+      default:
+        event = "COMMENT";
+        break;
+    }
+    return {
+      body,
+      event,
+      commit_id: review.commit_id as string,
+      created_at: review.submitted_at,
+      key: "pull_review",
+    };
+  });
+
+  const allComments: Comment[] = [
+    ...extract_reviews,
+    ...extract_issues,
+    ...extract_pull_reviews,
+  ].sort(
+    (a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
 
   return { allComments };
