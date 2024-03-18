@@ -23,8 +23,9 @@ export const processPr = async (args: PullRequest) => {
     body: JSON.stringify({ owner, repo, pull_number: Number(pull_number) }),
   });
   if (!response.ok) {
+    const res = await response.json();
     return {
-      error: `Error: ${response.statusText} Please try again or contact support at info@bitcoindevs.xyz`,
+      error: `${res}: Please try again or contact support at info@bitcoindevs.xyz`,
       data: null,
     };
   }
