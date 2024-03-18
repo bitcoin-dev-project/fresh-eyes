@@ -1,3 +1,4 @@
+use regex::Regex;
 use reqwest::{
     header::{self, HeaderMap, AUTHORIZATION},
     Client, StatusCode,
@@ -374,20 +375,40 @@ pub async fn fetch_github_data(
 
 pub fn modify_pull_request_body(args: Option<&str>) -> String {
     if let Some(args) = args {
-        let body = args
-            .split_whitespace()
-            .map(|word| {
-                if word.starts_with("#")
-                    || word.starts_with("@")
-                    || word.starts_with("https://github.com")
-                {
-                    format!("`{}`", word.trim())
-                } else {
-                    word.to_string()
-                }
+        // Regex for inline code blocks, GitHub links, and markdown links
+        let code_block_re = Regex::new(r"`([^`]*)`").unwrap();
+        let github_link_re = Regex::new(r"https://github\.com/[^\s\)]+").unwrap();
+        let markdown_link_re = Regex::new(r"\[([^\]]+)\]\((https://github\.com/[^\)]+)\)").unwrap();
+        let issue_pr_ref_re = Regex::new(r"#\d+").unwrap();
+
+        // Preserve inline code blocks by replacing them with placeholders
+        let mut placeholders = Vec::new();
+        let mut body = code_block_re
+            .replace_all(args, |caps: &regex::Captures| {
+                let placeholder = format!("CODEBLOCK{}", placeholders.len());
+                placeholders.push(caps[0].to_string());
+                placeholder
             })
-            .collect::<Vec<String>>()
-            .join(" ");
+            .to_string();
+
+        // Replace markdown links
+        body = markdown_link_re
+            .replace_all(&body, |caps: &regex::Captures| {
+                format!("{}: (`{}`)", &caps[1], &caps[2])
+            })
+            .to_string();
+
+        // Replace GitHub links not in markdown
+        body = github_link_re.replace_all(&body, "`$0`").to_string();
+
+        // Replace reference links to issues or PRs
+        body = issue_pr_ref_re.replace_all(&body, "`$0`").to_string();
+
+        // Restore inline code blocks from placeholders
+        for (i, block) in placeholders.iter().enumerate() {
+            body = body.replace(&format!("CODEBLOCK{}", i), block);
+        }
+
         body
     } else {
         String::new()
@@ -425,7 +446,7 @@ pub fn extract_pr_details(data: &Value) -> PullRequestDetails {
                 data["head"]["ref"].as_str().unwrap_or_default().to_string(),
                 data["number"].as_u64().unwrap_or_default().to_string()
             );
-        } else {
+        } else if environment == "production" {
             base_ref = format!(
                 "{}-fresheyes-{}-{}",
                 data["base"]["user"]["login"]
