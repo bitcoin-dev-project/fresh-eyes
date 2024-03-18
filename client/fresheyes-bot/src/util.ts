@@ -36,21 +36,6 @@ function formatTime(arg: string) {
   return `${year}/${month}/${day}, ${hours}:${minutes}:${seconds} UTC`;
 }
 
-export const modifyPullRequestBody = (
-  args: string | null
-): {
-  body: string;
-} => {
-  if (!args) return { body: "" };
-
-  const body = args
-    .split(" ")
-    .map((word) => (word.startsWith("#") || word.startsWith("@") || word.startsWith("https://github.com") ? "`" + word.trim() + "`" : word))
-    .join(" ");
-
-  return { body };
-};
-
 export function getReviewBody<T extends Array<Array<Record<string, any>>>>(value: T) {
   const list = value.flat().map((x) => ({ html_url: x.html_url, created_at: x.created_at }));
 

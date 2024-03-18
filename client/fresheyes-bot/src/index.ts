@@ -1,5 +1,5 @@
 import { Probot } from "probot";
-import { extractData, modifyPullRequestBody } from "./util";
+import { extractData } from "./util";
 
 export = (robot: Probot) => {
   const staging = process.env.BOT_ENV ?? "";
@@ -13,10 +13,7 @@ export = (robot: Probot) => {
         ref,
         repo: { default_branch },
       },
-      body: pullBody,
     } = context.payload.pull_request;
-
-    const { body } = modifyPullRequestBody(pullBody);
 
     const branch_name = ref.split("-").slice(0, 3).join("-");
     const shouldRun = branch_name === `${forked_repo}-fresheyes-${staging ? "staging" : default_branch}`;
@@ -24,13 +21,6 @@ export = (robot: Probot) => {
       robot.log("Branch is not the correct branch");
       return;
     }
-
-    await context.octokit.pulls.update({
-      owner: forked_owner,
-      repo: forked_repo,
-      pull_number: forked_pull_number,
-      body,
-    });
 
     const res = await context.octokit.repos.get({ owner: forked_owner, repo: forked_repo });
 
