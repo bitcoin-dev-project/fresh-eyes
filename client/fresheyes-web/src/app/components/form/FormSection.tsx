@@ -11,7 +11,11 @@ import { INSTALLATION_URL } from "@/config/process";
 const FormSection = () => {
   const [link, setLink] = useState("");
   const [isBotInstalled, setIsBotInstalled] = useState(false);
-  const [loading, setLoading] = useState({ loader: false, modal: false, isInstalledModal: false });
+  const [loading, setLoading] = useState({
+    loader: false,
+    modal: false,
+    isInstalledModal: false,
+  });
   const [error, setError] = useState("");
   const [formValues, setFormValues] = useState<PullRequest>({
     owner: "bitcoin",
@@ -67,35 +71,39 @@ const FormSection = () => {
 
   return (
     <>
-      <div className='mt-8 flex flex-col gap-5 border-b border-gray-300 bg-gradient-to-b from-zinc-200 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto rounded-xl lg:border lg:bg-gray-200 p-4 md:p-6 lg:dark:bg-zinc-800/30'>
-        <h1 className='text-[15px]'>Recreate a pull request with the following details</h1>
-        <section className='flex gap-4'>
+      <div className="mt-8 flex flex-col gap-5 border-b border-gray-300 bg-gradient-to-b from-zinc-200 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto rounded-xl lg:border lg:bg-gray-200 p-4 md:p-6 lg:dark:bg-zinc-800/30">
+        <h1 className="text-[15px]">
+          Recreate a pull request with the following details
+        </h1>
+        <section className="flex gap-4">
           <input
             className={`border-[1.5px] bg-secondary-gray border-input-border text-base p-4 rounded-md w-full placeholder:font-medium text-black `}
-            placeholder='owner'
-            name='owner'
-            type='text'
+            placeholder="owner"
+            name="owner"
+            type="text"
             value={owner}
             onChange={handleChange}
           />
           <input
             className={`border-[1.5px] bg-secondary-gray border-input-border text-base p-4 rounded-md w-full placeholder:font-medium text-black `}
-            placeholder='repo'
-            name='repo'
-            type='text'
+            placeholder="repo"
+            name="repo"
+            type="text"
             value={repo}
             onChange={handleChange}
           />
         </section>
         <input
           className={`border-[1.5px] bg-secondary-gray border-input-border text-base p-4 rounded-md w-full placeholder:font-medium text-black `}
-          placeholder='pull request number'
-          name='pull_number'
-          type='number'
+          placeholder="pull request number"
+          name="pull_number"
+          type="number"
           value={pull_number === 0 ? "" : pull_number}
           onChange={handleChange}
         />
-        {error && <p className=' text-center text-red-600 font-semibold'>{error}</p>}
+        {error && (
+          <p className=" text-center text-red-600 font-semibold">{error}</p>
+        )}
         <button
           className={`bg- border border-white hover:opacity-70 rounded-md w-full px-12 py-[16px] whitespace-nowrap font-semibold `}
           onClick={processPullRequest}
@@ -109,9 +117,9 @@ const FormSection = () => {
           href={link}
           loading={loading}
           setLoading={setLoading}
-          title='SUCCESS'
-          message='Click the button to view the pull request'
-          linkName='View PR'
+          title="SUCCESS"
+          message="Click the button to view the pull request"
+          linkName="View PR"
         />
       ) : null}
 
@@ -119,30 +127,45 @@ const FormSection = () => {
         <Modal
           loading={loading}
           setLoading={setLoading}
-          title='FreshEyes Bot not installed in the repository'
+          title="FreshEyes Bot not installed in the repository"
           message={
-            <section className=''>
+            <section className="">
               <p>
-                Please install the FreshEyes bot in the repository to proceed. The bot is required to recreate the review comments associated with the
-                pull request.
+                Please install the FreshEyes bot in the repository you want to
+                recreate the pull request to proceed. The bot is required to
+                recreate the review comments associated with the pull request.
               </p>
-              <p className=' font-semibold text-base underline pt-4 pb-2'>Steps</p>
-              <ol className=' list-decimal list-inside flex flex-col gap-2 py-4 pt-0'>
+              <p className=" font-semibold text-base underline pt-4 pb-2">
+                Steps
+              </p>
+              <ol className=" list-decimal list-inside flex flex-col gap-2 py-4 pt-0">
                 <li>Follow the installation link below to start.</li>
-                <li>Select where you want to install fresheyes bot.</li>
                 <li>
-                  Click on the <span className='bg-gray-600 leading-[250%] p-1 font-semibold rounded-sm text-xs'>Select repositories</span> to add the
-                  repository you want to install the bot in.
+                  Select the repository where you want to install the fresheyes
+                  bot.
                 </li>
                 <li>
-                  Click on the <span className=' bg-green-500 p-1 leading-[250%] font-semibold rounded-sm text-xs'>Save</span> button to complete the
-                  process.
+                  Click on the{" "}
+                  <span className="bg-gray-600 leading-[250%] p-1 font-semibold rounded-sm text-xs">
+                    Select repositories
+                  </span>{" "}
+                  button to add the repository you want to install the bot in.
                 </li>
-                <li>After a successful installation you'll be redirected to start using Fresheyes.</li>
+                <li>
+                  Click on the{" "}
+                  <span className=" bg-green-500 p-1 leading-[250%] font-semibold rounded-sm text-xs">
+                    Save
+                  </span>{" "}
+                  button to complete the process.
+                </li>
+                <li>
+                  After a successful installation you'll be redirected to start
+                  using Fresheyes.
+                </li>
               </ol>
             </section>
           }
-          linkName='Install FreshEyes Bot'
+          linkName="Install FreshEyes Bot"
           href={`https://github.com/apps/${INSTALLATION_URL}/installations/new`}
         />
       ) : null}

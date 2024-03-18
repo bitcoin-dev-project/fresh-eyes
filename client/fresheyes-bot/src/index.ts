@@ -6,7 +6,11 @@ export = (robot: Probot) => {
 
   robot.on(["pull_request.opened"], async (context) => {
     /**  Get information about the pull request **/
-    const { owner: forked_owner, repo: forked_repo, pull_number: forked_pull_number } = context.pullRequest();
+    const {
+      owner: forked_owner,
+      repo: forked_repo,
+      pull_number: forked_pull_number,
+    } = context.pullRequest();
     const {
       base: {
         label,
@@ -15,26 +19,54 @@ export = (robot: Probot) => {
       },
     } = context.payload.pull_request;
 
-    const branch_name = ref.split("-").slice(0, 3).join("-");
-    const shouldRun = branch_name === `${forked_repo}-fresheyes-${staging ? "staging" : default_branch}`;
+    const firstLiteral = ref.split("fresheyes")[1];
+    const secondLiteral = firstLiteral.split("-").slice(1, 2).join("-");
+
+    const splitBranch = ref.split("fresheyes")[0];
+    const branch_name = `${splitBranch}fresheyes-${secondLiteral}`;
+    const shouldRun =
+      branch_name ===
+      `${splitBranch}fresheyes-${staging ? "staging" : default_branch}`;
+
+    robot.log({
+      literal: `${splitBranch}fresheyes-${
+        staging ? "staging" : default_branch
+      }`,
+    });
+    robot.log({ shouldRun });
+
     if (!shouldRun) {
       robot.log("Branch is not the correct branch");
       return;
     }
 
-    const res = await context.octokit.repos.get({ owner: forked_owner, repo: forked_repo });
+    const res = await context.octokit.repos.get({
+      owner: forked_owner,
+      repo: forked_repo,
+    });
 
     const owner = res.data.parent?.owner.login;
     const repo = res.data.parent?.name;
     const pull_number = Number(label.split("-").slice(-1));
 
     if (!owner || !repo || !pull_number) {
-      throw Error(`Could not get parent repo information ${owner} ${repo} ${pull_number}`);
+      throw Error(
+        `Could not get parent repo information ${owner} ${repo} ${pull_number}`
+      );
     }
 
-    const { data: reviewComments } = await context.octokit.pulls.listReviewComments({ owner, repo, pull_number });
+    const { data: reviewComments } =
+      await context.octokit.pulls.listReviewComments({
+        owner,
+        repo,
+        pull_number,
+      });
 
-    const { data: issueComments } = await context.octokit.issues.listComments({ owner, repo, issue_number: pull_number });
+    const { data: issueComments } = await context.octokit.issues.listComments({
+      owner,
+      repo,
+      issue_number: pull_number,
+    });
 
     try {
       if (!reviewComments && !issueComments) {

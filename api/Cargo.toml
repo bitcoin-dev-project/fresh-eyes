@@ -20,6 +20,7 @@ futures-util = "0.3.30"
 actix-web = "4.0.0"
 actix-service = "2.0.0"
 mockito = "1.4.0"
+regex = "1.10.3"
 
 [dev-dependencies]
 futures-util = "*"
