@@ -255,8 +255,7 @@ impl<'a> ForkRequest<'a> {
             "https://api.github.com/repos/{}/{}/forks",
             self.owner, self.repo
         );
-        
-     
+
         let value = json!({
             "default_branch_only": false
         });
@@ -341,12 +340,16 @@ pub async fn get_pull_request_reviews(
         .map_err(|e| FreshEyesError::Unknown(format!("Deserialization error: {:?}", e)))
 }
 
-pub async fn fetch_github_data(url: &str, method: RequestMethod, token: String) -> Result<Value, FreshEyesError> {
+pub async fn fetch_github_data(
+    url: &str,
+    method: RequestMethod,
+    token: String,
+) -> Result<Value, FreshEyesError> {
     let client = Client::new();
     let mut headers = HeaderMap::new();
 
     headers.insert(header::USER_AGENT, "Fresh Eyes".parse().unwrap());
-    headers.insert(AUTHORIZATION, format!("Bearer {}", token).parse().unwrap()); 
+    headers.insert(AUTHORIZATION, format!("Bearer {}", token).parse().unwrap());
     headers.insert(
         header::ACCEPT,
         "application/vnd.github.v3+json".parse().unwrap(),
@@ -356,7 +359,7 @@ pub async fn fetch_github_data(url: &str, method: RequestMethod, token: String) 
         RequestMethod::GET => client.get(url).headers(headers).send().await?,
         RequestMethod::POST(body) => client.post(url).headers(headers).json(&body).send().await?,
     };
-    
+
     // check the status code
     if !response.status().is_success() {
         return Err(FreshEyesError::StatusCodeError(ErrorResponse {
@@ -369,30 +372,80 @@ pub async fn fetch_github_data(url: &str, method: RequestMethod, token: String) 
     Ok(response.json().await?)
 }
 
+pub fn modify_pull_request_body(args: Option<&str>) -> String {
+    if let Some(args) = args {
+        let body = args
+            .split_whitespace()
+            .map(|word| {
+                if word.starts_with("#")
+                    || word.starts_with("@")
+                    || word.starts_with("https://github.com")
+                {
+                    format!("`{}`", word.trim())
+                } else {
+                    word.to_string()
+                }
+            })
+            .collect::<Vec<String>>()
+            .join(" ");
+        body
+    } else {
+        String::new()
+    }
+}
 
 pub fn extract_pr_details(data: &Value) -> PullRequestDetails {
     let base_sha = data["base"]["sha"].as_str().unwrap_or_default().to_string();
     let head_sha = data["head"]["sha"].as_str().unwrap_or_default().to_string();
-    let base_ref = format!(
-        "{}-fresheyes-{}-{}",
-        data["base"]["user"]["login"]
-            .as_str()
-            .unwrap_or_default()
-            .to_string(),
-        data["base"]["ref"].as_str().unwrap_or_default().to_string(),
-        data["number"].as_u64().unwrap_or_default().to_string()
-    );
-    let head_ref = format!(
-        "{}-fresheyes-{}-{}",
-        data["head"]["user"]["login"]
-            .as_str()
-            .unwrap_or_default()
-            .to_string(),
-        data["head"]["ref"].as_str().unwrap_or_default().to_string(),
-        data["number"].as_u64().unwrap_or_default().to_string()
-    );
     let title = data["title"].as_str().unwrap_or_default().to_string();
     let body = data["body"].as_str().unwrap_or_default().to_string();
+
+    let modified_body = modify_pull_request_body(Some(&body));
+
+    let mut base_ref = String::new();
+    let mut head_ref = String::new();
+
+    if let Ok(environment) = std::env::var("ENV") {
+        if environment == "staging" {
+            base_ref = format!(
+                "{}-fresheyes-staging-{}-{}",
+                data["base"]["user"]["login"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_string(),
+                data["base"]["ref"].as_str().unwrap_or_default().to_string(),
+                data["number"].as_u64().unwrap_or_default().to_string()
+            );
+            head_ref = format!(
+                "{}-fresheyes-staging-{}-{}",
+                data["head"]["user"]["login"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_string(),
+                data["head"]["ref"].as_str().unwrap_or_default().to_string(),
+                data["number"].as_u64().unwrap_or_default().to_string()
+            );
+        } else {
+            base_ref = format!(
+                "{}-fresheyes-{}-{}",
+                data["base"]["user"]["login"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_string(),
+                data["base"]["ref"].as_str().unwrap_or_default().to_string(),
+                data["number"].as_u64().unwrap_or_default().to_string()
+            );
+            head_ref = format!(
+                "{}-fresheyes-{}-{}",
+                data["head"]["user"]["login"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_string(),
+                data["head"]["ref"].as_str().unwrap_or_default().to_string(),
+                data["number"].as_u64().unwrap_or_default().to_string()
+            );
+        }
+    }
 
     PullRequestDetails {
         base_sha,
@@ -400,6 +453,6 @@ pub fn extract_pr_details(data: &Value) -> PullRequestDetails {
         base_ref,
         head_ref,
         title,
-        body,
+        body: modified_body,
     }
 }
