@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "start": "probot run ./lib/index.js --port=3001",
+    "start": "probot run ./lib/index.js",
     "test": "jest"
   },
   "dependencies": {
