@@ -373,40 +373,71 @@ pub async fn fetch_github_data(
     Ok(response.json().await?)
 }
 
+/// Modify the body of a pull request to display links, images, and code blocks in a format that
+/// can be displayed in a code block without being rendered as a link.
+/// This is useful for displaying the body of a pull request without the links referencing the
+/// actual pull request.
+/// For example, a link to a pull request will be displayed as `#123` instead of a clickable link.
+/// Images and code blocks will be converted to markdown format.
 pub fn modify_pull_request_body(args: Option<&str>) -> String {
     if let Some(args) = args {
-        // Regex for inline code blocks, GitHub links, and markdown links
+        // Regex for finding and replacing code blocks, links, and images
         let code_block_re = Regex::new(r"`([^`]*)`").unwrap();
         let github_link_re = Regex::new(r"https://github\.com/[^\s\)]+").unwrap();
         let markdown_link_re = Regex::new(r"\[([^\]]+)\]\((https://github\.com/[^\)]+)\)").unwrap();
         let issue_pr_ref_re = Regex::new(r"#\d+").unwrap();
+        let img_tag_re =
+            Regex::new(r#"<img\s+[^>]*src="(https://github\.com/[^"]+)"[^>]*>"#).unwrap();
+        let markdown_img_re = Regex::new(r"!\[([^\]]*)\]\((https://github\.com/[^\)]+)\)").unwrap();
 
-        // Preserve inline code blocks by replacing them with placeholders
         let mut placeholders = Vec::new();
-        let mut body = code_block_re
-            .replace_all(args, |caps: &regex::Captures| {
+        let mut body = args.to_owned();
+
+        // Temporarily replace <img> tags with placeholders
+        body = img_tag_re
+            .replace_all(&body, |caps: &regex::Captures| {
+                let placeholder = format!("IMGPLACEHOLDER{}", placeholders.len());
+                placeholders.push(caps[0].to_string());
+                placeholder
+            })
+            .to_string();
+
+        // Temporarily replace Markdown images with placeholders
+        body = markdown_img_re
+            .replace_all(&body, |caps: &regex::Captures| {
+                let placeholder = format!("MARKDOWNIMGPLACEHOLDER{}", placeholders.len());
+                placeholders.push(caps[0].to_string());
+                placeholder
+            })
+            .to_string();
+
+        // Process code blocks and add placeholders
+        body = code_block_re
+            .replace_all(&body, |caps: &regex::Captures| {
                 let placeholder = format!("CODEBLOCK{}", placeholders.len());
                 placeholders.push(caps[0].to_string());
                 placeholder
             })
             .to_string();
 
-        // Replace markdown links
+        // Replace GitHub links not in markdown format with markdown format
+        body = github_link_re.replace_all(&body, "`$0`").to_string();
+
+        // Replace markdown links with a format that can be displayed in a code block
+        // without being rendered as a link
+        // e.g. [link text](link) -> link text: (`link`)
         body = markdown_link_re
             .replace_all(&body, |caps: &regex::Captures| {
                 format!("{}: (`{}`)", &caps[1], &caps[2])
             })
             .to_string();
-
-        // Replace GitHub links not in markdown
-        body = github_link_re.replace_all(&body, "`$0`").to_string();
-
-        // Replace reference links to issues or PRs
         body = issue_pr_ref_re.replace_all(&body, "`$0`").to_string();
 
-        // Restore inline code blocks from placeholders
+        // Restore placeholders for images and inline code blocks
         for (i, block) in placeholders.iter().enumerate() {
-            body = body.replace(&format!("CODEBLOCK{}", i), block);
+            body = body.replace(&format!("IMGPLACEHOLDER{}", i), &block);
+            body = body.replace(&format!("MARKDOWNIMGPLACEHOLDER{}", i), &block);
+            body = body.replace(&format!("CODEBLOCK{}", i), &block);
         }
 
         body
