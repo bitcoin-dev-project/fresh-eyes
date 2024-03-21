@@ -379,16 +379,15 @@ pub async fn fetch_github_data(
 /// actual pull request.
 /// For example, a link to a pull request will be displayed as `#123` instead of a clickable link.
 /// Images and code blocks will be converted to markdown format.
-pub fn modify_pull_request_body(args: Option<&str>) -> String {
+pub fn modify_pull_request_body(args: Option<&str>) -> Result<String, regex::Error> {
     if let Some(args) = args {
         // Regex for finding and replacing code blocks, links, and images
-        let code_block_re = Regex::new(r"`([^`]*)`").unwrap();
-        let github_link_re = Regex::new(r"https://github\.com/[^\s\)]+").unwrap();
-        let markdown_link_re = Regex::new(r"\[([^\]]+)\]\((https://github\.com/[^\)]+)\)").unwrap();
-        let issue_pr_ref_re = Regex::new(r"#\d+").unwrap();
-        let img_tag_re =
-            Regex::new(r#"<img\s+[^>]*src="(https://github\.com/[^"]+)"[^>]*>"#).unwrap();
-        let markdown_img_re = Regex::new(r"!\[([^\]]*)\]\((https://github\.com/[^\)]+)\)").unwrap();
+        let code_block_re = Regex::new(r"`([^`]*)`")?;
+        let github_link_re = Regex::new(r"https://github\.com/[^\s\)]+")?;
+        let markdown_link_re = Regex::new(r"\[([^\]]+)\]\((https://github\.com/[^\)]+)\)")?;
+        let issue_pr_ref_re = Regex::new(r"#\d+")?;
+        let img_tag_re = Regex::new(r#"<img\s+[^>]*src="(https://github\.com/[^"]+)"[^>]*>"#)?;
+        let markdown_img_re = Regex::new(r"!\[([^\]]*)\]\((https://github\.com/[^\)]+)\)")?;
 
         let mut placeholders = Vec::new();
         let mut body = args.to_owned();
@@ -440,9 +439,9 @@ pub fn modify_pull_request_body(args: Option<&str>) -> String {
             body = body.replace(&format!("CODEBLOCK{}", i), &block);
         }
 
-        body
+        Ok(body)
     } else {
-        String::new()
+        Ok(String::new())
     }
 }
 
@@ -452,7 +451,11 @@ pub fn extract_pr_details(data: &Value) -> PullRequestDetails {
     let title = data["title"].as_str().unwrap_or_default().to_string();
     let body = data["body"].as_str().unwrap_or_default().to_string();
 
-    let modified_body = modify_pull_request_body(Some(&body));
+    // if modification of the body fails, return the original body
+    let modified_body = match modify_pull_request_body(Some(&body)) {
+        Ok(mod_body) => mod_body,
+        Err(_) => body,
+    };
 
     let mut base_ref = String::new();
     let mut head_ref = String::new();
