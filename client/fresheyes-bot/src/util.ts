@@ -10,6 +10,8 @@ type Comment = {
 };
 
 export function groupCommentsFn<T extends Array<Record<string, any>>>(data: T) {
+  const outdatedReviews = data.filter((x) => x.line === null).map((i) => ({ ...i, outdated: true }));
+
   const comments: Record<string, Array<typeof data>> = data
     .filter((f) => f.line !== null)
     .map((x: any) => ({ ...x, line: String(x.line) }))
@@ -21,7 +23,7 @@ export function groupCommentsFn<T extends Array<Record<string, any>>>(data: T) {
       return { ...acc, [key]: [...group, curr] };
     }, {});
 
-  return comments;
+  return { comments, outdatedReviews };
 }
 
 function formatTime(arg: string) {
@@ -37,65 +39,60 @@ function formatTime(arg: string) {
   return `${year}/${month}/${day}, ${hours}:${minutes}:${seconds} UTC`;
 }
 
-export function getReviewBody<T extends Array<Array<Record<string, any>>>>(
-  value: T
-) {
-  const list = value
-    .flat()
-    .map((x) => ({ html_url: x.html_url, created_at: x.created_at }));
+export function getReviewBody<T extends Array<Array<Record<string, any>>>>(value: T) {
+  const list = value.flat().map((x) => ({ html_url: x.html_url, created_at: x.created_at }));
 
   const formatString = list
     .map((val) => {
-      return `- comment link ${"`" + val.html_url + "`"} at ${formatTime(
-        val.created_at
-      )}`;
+      return `- comment link ${"`" + val.html_url + "`"} at ${formatTime(val.created_at)}`;
     })
     .join("\n");
 
-  const body = `${
-    value.length === 1 ? "An author" : `${value.length} authors`
-  } commented here with:\n\n${formatString}.`;
+  const body = `${value.length === 1 ? "An author" : `${value.length} authors`} commented here with:\n\n${formatString}.`;
 
-  const comment = value
-    .flat()
-    .sort(
-      (a, b) =>
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    )[0];
+  const comment = value.flat().sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
 
   return { body, comment };
 }
 
-export function getIssueBody<T extends Pick<T, "html_url" | "created_at">>(
-  arg: T
+export function getIssueBody<T extends Record<string, any>>(arg: T) {
+  const formatString = `- comment link ${"`" + arg.html_url + "`"} at ${formatTime(arg.created_at as string)}`;
+
+  const outdatedComment = `This is an **OUTDATED** review comment  as the original pull request may have been rebased or force-pushed\n`;
+
+  const body = `${arg?.outdated ? outdatedComment : "An author commented here with:"}\n\n${formatString}.`;
+
+  return { body };
+}
+
+export function getPullReviewBody<T extends Record<string, any>>(arg: T, event: "APPROVE" | "REQUEST_CHANGES" | "COMMENT") {
+  const formatString = `- comment link ${"`" + arg.html_url + "`"} at ${formatTime(arg.submitted_at as string)}`;
+
+  let comment = "";
+
+  if (event === "APPROVE") {
+    comment = "approved";
+  } else if (event === "COMMENT") {
+    comment = "commented";
+  } else if (event === "REQUEST_CHANGES") {
+    comment = `requested changes`;
+  } else {
+    comment = "";
+  }
+
+  const body = `An author reviewed and ${comment} here with:\n\n${formatString}.`;
+
+  return { body };
+}
+
+export function extractData<R extends Array<Record<string, any>>, I extends Array<Record<string, any>>, T extends Array<Record<string, any>>>(
+  reviews: R,
+  issues: I,
+  pull_reviews: T
 ) {
-  const formatString = `- comment link ${
-    "`" + arg.html_url + "`"
-  } at ${formatTime(arg.created_at as string)}`;
+  const { comments, outdatedReviews } = groupCommentsFn(reviews);
 
-  const body = `An author commented here with:\n\n${formatString}.`;
-
-  return { body };
-}
-
-export function getPullReviewBody<T extends Record<string, any>>(arg: T) {
-  const formatString = `- comment link ${
-    "`" + arg.html_url + "`"
-  } at ${formatTime(arg.submitted_at as string)}`;
-
-  const body = `An author commented here with:\n\n${formatString}.`;
-
-  return { body };
-}
-
-export function extractData<
-  R extends Array<Record<string, any>>,
-  I extends Array<Pick<Record<string, any>, "html_url" | "created_at">>,
-  T extends Array<Record<string, any>>
->(reviews: R, issues: I, pull_reviews: T) {
-  const groupReviews = groupCommentsFn(reviews);
-
-  const extract_reviews = Object.entries(groupReviews).map(([key, value]) => {
+  const extract_reviews = Object.entries(comments).map(([key, value]) => {
     const { body, comment } = getReviewBody(value);
 
     return {
@@ -109,7 +106,7 @@ export function extractData<
     };
   });
 
-  const extract_issues = issues.map((i) => {
+  const extract_issues = issues.concat(outdatedReviews).map((i) => {
     const { body } = getIssueBody(i);
     return {
       body,
@@ -119,7 +116,6 @@ export function extractData<
   });
 
   const extract_pull_reviews = pull_reviews.map((review) => {
-    const { body } = getPullReviewBody(review);
     let event: "APPROVE" | "REQUEST_CHANGES" | "COMMENT" = "COMMENT";
     switch (review.state) {
       case "APPROVED":
@@ -132,6 +128,7 @@ export function extractData<
         event = "COMMENT";
         break;
     }
+    const { body } = getPullReviewBody(review, event);
     return {
       body,
       event,
@@ -141,13 +138,8 @@ export function extractData<
     };
   });
 
-  const allComments: Comment[] = [
-    ...extract_reviews,
-    ...extract_issues,
-    ...extract_pull_reviews,
-  ].sort(
-    (a, b) =>
-      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  const allComments: Comment[] = [...extract_reviews, ...extract_issues, ...extract_pull_reviews].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
 
   return { allComments };
