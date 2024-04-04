@@ -49,7 +49,7 @@ const Modal = ({
               </div>
 
               <section className=" flex flex-col items-center justify-center gap-6 w-full pt-10">
-                <p className=" text-xl md:text-2xl font-thin">{title}</p>
+                <p className=" text-xl md:text-2xl font-semibold">{title}</p>
                 <div className="">{message}</div>
                 <Link
                   href={href || "/"}
