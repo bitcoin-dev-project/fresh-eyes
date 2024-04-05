@@ -41,29 +41,16 @@ export const ClickableOptions = ({
   setFormValues,
   onClickOption,
 }: PullRequest & { onClickOption: (arg: PullRequest) => Promise<void>; setFormValues: React.Dispatch<React.SetStateAction<PullRequest>> }) => {
-  const [onHover, setOnHover] = React.useState(false);
-
   return (
     <button
-      className={`h-full w-full bg-white min-h-[100px] min-w-[170px] p-3 rounded-xl md:hover:scale-105 text-black flex flex-col items-start relative`}
-      onMouseEnter={() => {
-        setOnHover(true);
-      }}
-      onMouseLeave={() => {
-        setOnHover(false);
-      }}
+      className={`h-full w-full text-white min-h-[100px] min-w-[170px] p-3 rounded-xl md:hover:scale-105 flex flex-col items-start relative border-b border-gray-300 bg-gradient-to-b from-zinc-200 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:border lg:bg-gray-200 lg:dark:bg-zinc-800/30`}
       onClick={async () => {
         setFormValues((prev) => ({ ...prev, owner, repo, pull_number }));
         await onClickOption({ owner, repo, pull_number });
       }}
     >
       <section className=' absolute right-3 bottom-3'>
-        <p
-          className='text-xs text-black border-[1.5px] p-2 px-3 rounded-3xl font-bold'
-          style={{ backgroundColor: onHover ? "#22c55e" : "", color: onHover ? "#ffffff" : "" }}
-        >
-          RUN
-        </p>
+        <p className='text-xs text-white border-[1.5px] p-2 px-3 rounded-3xl font-bold'>RUN</p>
       </section>
       <p className='font-medium'>
         <span className='text-sm font-light'>owner / organization: </span>

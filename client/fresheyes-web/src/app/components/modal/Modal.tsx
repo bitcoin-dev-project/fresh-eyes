@@ -4,6 +4,7 @@ import React from "react";
 const Modal = ({
   href,
   title,
+  spanTitle,
   message,
   linkName,
   loading,
@@ -19,6 +20,7 @@ const Modal = ({
     }>
   >;
   title?: string;
+  spanTitle?: string;
   message?: React.ReactNode;
   linkName?: string;
 }) => {
@@ -49,7 +51,7 @@ const Modal = ({
               </div>
 
               <section className=" flex flex-col items-center justify-center gap-6 w-full pt-10">
-                <p className=" text-xl md:text-2xl font-semibold">{title}</p>
+                <p className=" text-xl md:text-2xl font-semibold">{title} <span className=' underline text-lg'>{spanTitle}</span></p>
                 <div className="">{message}</div>
                 <Link
                   href={href || "/"}
