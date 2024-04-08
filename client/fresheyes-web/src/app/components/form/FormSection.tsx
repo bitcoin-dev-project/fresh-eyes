@@ -8,6 +8,7 @@ import { PullRequest, PullRequestResponse } from "@/types";
 import { checkIfAppInstalledInRepo, forkRepository } from "./bot";
 import { INSTALLATION_URL } from "@/config/process";
 import { ClickableOptions, CustomInput } from "./CustomComponents";
+import Link from "next/link";
 
 const FormSection = ({ username }: { username: string | null | undefined }) => {
   const [link, setLink] = useState("");
@@ -109,7 +110,7 @@ const FormSection = ({ username }: { username: string | null | undefined }) => {
           />
           {error && <p className=' text-center text-red-600 font-semibold'>{error}</p>}
           <button
-            className='border border-white hover:opacity-70 rounded-md w-full px-12 py-[16px] whitespace-nowrap font-semibold'
+            className='border border-gray-400 dark:hover:bg-black dark:border-white hover:bg-gray-300 dark:hover:opacity-70 rounded-md w-full px-12 py-[16px] whitespace-nowrap font-semibold'
             onClick={() => processPullRequest(false, { owner: "", repo: "", pull_number: 0 })}
           >
             Run FreshEyes
@@ -136,23 +137,25 @@ const FormSection = ({ username }: { username: string | null | undefined }) => {
             message={
               <section className=''>
                 <ol className=' list-disc list-inside flex flex-col gap-2 py-4 pt-1'>
-                  <li>The FreshEyes bot recreates the comments and reviews of your chosen pull request.</li>
+                  <li>The FreshEyes bot recreates comments and reviews of your chosen pull request.</li>
                   <li>The bot only reads pull requests associated with FreshEyes, and no other data.</li>
                 </ol>
                 <p className=' font-semibold text-base underline pt-4 pb-2'>Steps</p>
                 <ol className=' list-decimal list-inside flex flex-col gap-2 py-4 pt-0'>
-                  <li>FreshEyes will automatically clone {repo} to your account.</li>
+                  <li>FreshEyes will automatically clone {" "} 
+                    <Link target="_blank" className="underline hover:opacity-70" href={`https://github.com/${formValues.owner}/${formValues.repo}`}>{repo}</Link> 
+                  {" "} to your account.</li>
                   <li>
-                    To install the bot click{" "}
-                    <span className='bg-gray-600 leading-[250%] p-1 font-semibold rounded-sm text-xs'>Install FreshEyes Bot</span> .
+                    To install the bot, click the {" "}
+                    <span className='bg-gray-600 leading-[250%] p-1 font-semibold rounded-sm text-xs text-white'>Install FreshEyes Bot</span> button below.
                   </li>
                   <li>In the new screen, click on your username.</li>
                   <li>
                     In the new page click <span>"Only select repositories"</span>.
                   </li>
                   <li>
-                    In the <span className='bg-gray-600 leading-[250%] p-1 font-semibold rounded-sm text-xs'>Select repositories</span> dropdown,
-                    select your {username}/{repo}.
+                    In the <span className='bg-gray-600 text-white leading-[250%] p-1 font-semibold rounded-sm text-xs'>Select repositories</span> dropdown,
+                    select "{username}/{repo}".
                   </li>
                   <li>Click "Install".</li>
                 </ol>
