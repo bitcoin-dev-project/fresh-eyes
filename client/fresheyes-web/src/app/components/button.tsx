@@ -17,7 +17,7 @@ export default function Button({ children, onClick, type, icon }: ButtonProps) {
       return;
     }
     if (type === "signout") {
-      signOut({ callbackUrl: "/landing" });
+      signOut({ callbackUrl: "/" });
       return;
     }
   };
