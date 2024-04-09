@@ -17,6 +17,9 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
+  pages: {
+    signIn: "/home",
+  },
   callbacks: {
     async jwt({ token, account, profile }) {
       if (account) {
@@ -33,6 +36,13 @@ export const authOptions: NextAuthOptions = {
         session.user.html_url = html_url;
       }
       return session;
+    },
+  },
+  events: {
+    signOut(message) {
+      const { token, session } = message;
+      token.accessToken = null;
+      session.accessToken = undefined;
     },
   },
 };
