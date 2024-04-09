@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Mulish } from "next/font/google";
 import "./globals.css";
 import AuthProvider from "@/context/auth-provider";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Mulish({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Fresh-eyes",
