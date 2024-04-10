@@ -142,20 +142,25 @@ const FormSection = ({ username }: { username: string | null | undefined }) => {
                 </ol>
                 <p className=' font-semibold text-base underline pt-4 pb-2'>Steps</p>
                 <ol className=' list-decimal list-inside flex flex-col gap-2 py-4 pt-0'>
-                  <li>FreshEyes will automatically clone {" "} 
-                    <Link target="_blank" className="underline hover:opacity-70" href={`https://github.com/${formValues.owner}/${formValues.repo}`}>{repo}</Link> 
-                  {" "} to your account.</li>
                   <li>
-                    To install the bot, click the {" "}
-                    <span className='bg-gray-600 leading-[250%] p-1 font-semibold rounded-sm text-xs text-white'>Install FreshEyes Bot</span> button below.
+                    FreshEyes will automatically clone{" "}
+                    <Link target='_blank' className='underline hover:opacity-70' href={`https://github.com/${formValues.owner}/${formValues.repo}`}>
+                      {repo}
+                    </Link>{" "}
+                    to your account.
+                  </li>
+                  <li>
+                    To install the bot, click the{" "}
+                    <span className='bg-gray-600 leading-[250%] p-1 font-semibold rounded-sm text-xs text-white'>Install FreshEyes Bot</span> button
+                    below.
                   </li>
                   <li>In the new screen, click on your username.</li>
                   <li>
                     In the new page click <span>"Only select repositories"</span>.
                   </li>
                   <li>
-                    In the <span className='bg-gray-600 text-white leading-[250%] p-1 font-semibold rounded-sm text-xs'>Select repositories</span> dropdown,
-                    select "{username}/{repo}".
+                    In the <span className='bg-gray-600 text-white leading-[250%] p-1 font-semibold rounded-sm text-xs'>Select repositories</span>{" "}
+                    dropdown, select "{username}/{repo}".
                   </li>
                   <li>Click "Install".</li>
                 </ol>
@@ -168,20 +173,15 @@ const FormSection = ({ username }: { username: string | null | undefined }) => {
       </div>
 
       <div className='flex flex-col gap-6 overflow-x-scroll max-w-5xl  xl:w-3/4 md:p-4 w-full'>
+        <h2 className=' text-base md:text-xl font-semibold'>Want to see how FreshEyes work ? Try cloning some of these repositories</h2>
         <section className='flex flex-col md:flex-row w-full gap-6'>
-          <ClickableOptions
-            owner={"bitcoin"}
-            repo={"bitcoin"}
-            pull_number={8149}
-            onClickOption={() => processPullRequest(true, { owner: "bitcoin", repo: "bitcoin", pull_number: 8149 })}
-            setFormValues={setFormValues}
-          />
+          <ClickableOptions owner={"bitcoin"} repo={"bitcoin"} pull_number={8149} setFormValues={setFormValues} title={"Segregated witness"} />
           <ClickableOptions
             owner={"bitcoindevkit"}
             repo={"bdk"}
             pull_number={593}
-            onClickOption={() => processPullRequest(true, { owner: "bitcoindevkit", repo: "bdk", pull_number: 593 })}
             setFormValues={setFormValues}
+            title={"Add support for Taproot and tr() descriptors"}
           />
         </section>
         <section className='flex flex-col md:flex-row w-full gap-6'>
@@ -189,15 +189,15 @@ const FormSection = ({ username }: { username: string | null | undefined }) => {
             owner={"lightningnetwork"}
             repo={"lnd"}
             pull_number={2022}
-            onClickOption={() => processPullRequest(true, { owner: "lightningnetwork", repo: "lnd", pull_number: 2022 })}
             setFormValues={setFormValues}
+            title={"htlcswitch: hodl invoice"}
           />
           <ClickableOptions
             owner={"bitcoin-dev-project"}
             repo={"sim-ln"}
             pull_number={165}
-            onClickOption={() => processPullRequest(true, { owner: "bitcoin-dev-project", repo: "sim-ln", pull_number: 165 })}
             setFormValues={setFormValues}
+            title={"Add Ability to Run as Full Simulator"}
           />
         </section>
       </div>

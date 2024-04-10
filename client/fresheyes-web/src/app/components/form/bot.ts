@@ -15,6 +15,58 @@ const app = new App({
   privateKey: process.env.GITHUB_PRIVATE_KEY ?? "",
 });
 
+export async function getInstalledRepositories(): Promise<{ error: string | null; success: boolean; list: Array<any> | null }> {
+  const session = await auth();
+  if (!session || !session?.user?.login || !session?.accessToken) {
+    return {
+      error: "You must be logged in perform this action",
+      success: false,
+      list: null,
+    };
+  }
+
+  try {
+    const installations = await app.octokit.request("GET /app/installations");
+
+    for (const installation of installations.data) {
+      if (installation.account && installation.app_id === Number(process.env.GITHUB_APP_ID)) {
+        const installationOctokit = await app.getInstallationOctokit(installation.id);
+
+        try {
+          const repos = await installationOctokit.request("GET /installation/repositories");
+          console.log(repos.data.repositories);
+
+          return {
+            success: true,
+            list: repos.data.repositories,
+            error: null,
+          };
+        } catch (repoError) {
+          console.error("Error accessing repositories for installation:", repoError);
+          return {
+            error: "Error accessing installed repositories",
+            list: null,
+            success: false,
+          };
+        }
+      }
+    }
+  } catch (installationError) {
+    console.error("Error fetching installations:", installationError);
+    return {
+      error: "Error fetching installations",
+      success: false,
+      list: null,
+    };
+  }
+
+  return {
+    error: "Installation not found",
+    success: false,
+    list: null,
+  };
+}
+
 export async function checkIfAppInstalledInRepo({ repoName }: { repoName: string }): Promise<InstallationCheckResult> {
   const session = await auth();
   if (!session || !session?.user?.login || !session?.accessToken) {
