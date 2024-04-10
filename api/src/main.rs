@@ -54,7 +54,6 @@ async fn process_pull_requests(req: HttpRequest, pr: web::Json<PullRequest>) -> 
         }
     };
 
-
     // Fetch the desired pull request
     let pull_request_instance = LibPullRequest::from_pull_number(
         &pull_request.owner,
