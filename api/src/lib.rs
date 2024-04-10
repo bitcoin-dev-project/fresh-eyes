@@ -387,7 +387,7 @@ pub fn modify_pull_request_body(args: Option<&str>) -> Result<String, regex::Err
         let markdown_link_re = Regex::new(r"\[([^\]]+)\]\((https://github\.com/[^\)]+)\)")?;
         let issue_pr_ref_re = Regex::new(r"#\d+")?;
         let img_tag_re = Regex::new(r#"<img\s+[^>]*src="(https://github\.com/[^"]+)"[^>]*>"#)?;
-        let markdown_img_re = Regex::new(r"!\[([^\]]*)\]\((https://github\.com/[^\)]+)\)")?;
+        let markdown_img_re = Regex::new(r"!\[([^\]]*)s\]\((https://github\.com/[^\)]+)\)")?;
 
         let mut placeholders = Vec::new();
         let mut body = args.to_owned();
@@ -448,14 +448,26 @@ pub fn modify_pull_request_body(args: Option<&str>) -> Result<String, regex::Err
 pub fn extract_pr_details(data: &Value) -> PullRequestDetails {
     let base_sha = data["base"]["sha"].as_str().unwrap_or_default().to_string();
     let head_sha = data["head"]["sha"].as_str().unwrap_or_default().to_string();
-    let title = data["title"].as_str().unwrap_or_default().to_string();
-    let body = data["body"].as_str().unwrap_or_default().to_string();
+    let title = format!("[FreshEyes] {}", data["title"].as_str().unwrap_or_default());
+    let original_author = data["user"]["login"].as_str().unwrap_or_default();
+    let original_pr_name = data["title"].as_str().unwrap_or_default();
+    let issue_number = data["number"].as_u64().unwrap_or_default();
+    let org = data["base"]["repo"]["owner"]["login"]
+        .as_str()
+        .unwrap_or_default();
+    let repo = data["base"]["repo"]["name"].as_str().unwrap_or_default();
+
+    let body = format!("The author **{}** wrote the following PR called **{}**, issue number **{}** in **{}/{}** cloned by FreshEyes below:\n\n{}",
+                       original_author,
+                       original_pr_name,
+                       issue_number,
+                       org,
+                       repo,
+                       data["body"].as_str().unwrap_or_default()
+    );
 
     // if modification of the body fails, return the original body
-    let modified_body = match modify_pull_request_body(Some(&body)) {
-        Ok(mod_body) => mod_body,
-        Err(_) => body,
-    };
+    let modified_body = modify_pull_request_body(Some(&body)).unwrap_or_else(|_| body);
 
     let mut base_ref = String::new();
     let mut head_ref = String::new();

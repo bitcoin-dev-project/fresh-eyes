@@ -1,13 +1,14 @@
 use actix_service::Transform;
-use actix_web::{dev::{Service, ServiceRequest, ServiceResponse}, Error, HttpMessage, HttpResponse, ResponseError};
+use actix_web::{
+    dev::{Service, ServiceRequest, ServiceResponse},
+    Error, HttpMessage, HttpResponse, ResponseError,
+};
 use futures_util::future::LocalBoxFuture;
 use std::fmt;
 use std::future::{ready, Ready};
 use std::task::{Context, Poll};
 
-
 use crate::app_data::AppData;
-
 
 pub struct Authentication;
 
@@ -88,6 +89,4 @@ where
             Box::pin(async { Err(UnauthorizedError.into()) })
         }
     }
-
-
 }
