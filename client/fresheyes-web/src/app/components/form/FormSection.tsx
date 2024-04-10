@@ -9,6 +9,7 @@ import { checkIfAppInstalledInRepo, forkRepository } from "./bot";
 import { INSTALLATION_URL } from "@/config/process";
 import { ClickableOptions, CustomInput } from "./CustomComponents";
 import Link from "next/link";
+import { SuccessModal } from '../modal/SuccessModal';
 
 const FormSection = ({ username }: { username: string | null | undefined }) => {
   const [link, setLink] = useState("");
@@ -165,6 +166,7 @@ const FormSection = ({ username }: { username: string | null | undefined }) => {
             href={`https://github.com/apps/${INSTALLATION_URL}/installations/new`}
           />
         ) : null}
+        <SuccessModal />
       </div>
 
       <div className='flex flex-col gap-6 overflow-x-scroll max-w-5xl  xl:w-3/4 md:p-4 w-full'>
