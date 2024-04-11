@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
+import { GITHUB_APP_ID } from '@/config/process';
 import { App } from "@octokit/app";
 import { Octokit } from "octokit";
 
@@ -29,12 +30,11 @@ export async function getInstalledRepositories(): Promise<{ error: string | null
     const installations = await app.octokit.request("GET /app/installations");
 
     for (const installation of installations.data) {
-      if (installation.account && installation.app_id === Number(process.env.GITHUB_APP_ID)) {
+      if (installation.account && installation.app_id === Number(GITHUB_APP_ID)) {
         const installationOctokit = await app.getInstallationOctokit(installation.id);
 
         try {
           const repos = await installationOctokit.request("GET /installation/repositories");
-          console.log(repos.data.repositories);
 
           return {
             success: true,

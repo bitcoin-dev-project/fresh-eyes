@@ -108,7 +108,7 @@ const FormSection = ({ username }: { username: string | null | undefined }) => {
             value={pull_number === 0 ? "" : pull_number}
             setFormValues={setFormValues}
           />
-          {error && <p className=' text-center text-red-600 font-semibold'>{error}</p>}
+          {error && <p className='text-center text-red-600 font-semibold'>{error}</p>}
           <button
             className='border border-gray-400 dark:hover:bg-black dark:border-white hover:bg-gray-300 dark:hover:opacity-70 rounded-md w-full px-12 py-[16px] whitespace-nowrap font-semibold'
             onClick={() => processPullRequest(false, { owner: "", repo: "", pull_number: 0 })}
@@ -136,12 +136,12 @@ const FormSection = ({ username }: { username: string | null | undefined }) => {
             spanTitle={`${username}/${repo}`}
             message={
               <section className=''>
-                <ol className=' list-disc list-inside flex flex-col gap-2 py-4 pt-1'>
+                <ol className='list-disc list-inside flex flex-col gap-2 py-4 pt-1'>
                   <li>The FreshEyes bot recreates comments and reviews of your chosen pull request.</li>
                   <li>The bot only reads pull requests associated with FreshEyes, and no other data.</li>
                 </ol>
-                <p className=' font-semibold text-base underline pt-4 pb-2'>Steps</p>
-                <ol className=' list-decimal list-inside flex flex-col gap-2 py-4 pt-0'>
+                <p className='font-semibold text-base underline pt-4 pb-2'>Steps</p>
+                <ol className='list-decimal list-inside flex flex-col gap-2 py-4 pt-0'>
                   <li>
                     FreshEyes will automatically clone{" "}
                     <Link target='_blank' className='underline hover:opacity-70' href={`https://github.com/${formValues.owner}/${formValues.repo}`}>
@@ -173,9 +173,9 @@ const FormSection = ({ username }: { username: string | null | undefined }) => {
       </div>
 
       <div className='flex flex-col gap-6 overflow-x-scroll max-w-5xl  xl:w-3/4 md:p-4 w-full'>
-        <h2 className=' text-base md:text-xl font-semibold'>Want to see how FreshEyes work ? Try cloning some of these repositories</h2>
+        <h2 className='text-base md:text-xl font-semibold'>Clone some of the repos below to see FreshEyes in action</h2>
         <section className='flex flex-col md:flex-row w-full gap-6'>
-          <ClickableOptions owner={"bitcoin"} repo={"bitcoin"} pull_number={8149} setFormValues={setFormValues} title={"Segregated witness"} />
+          <ClickableOptions owner={"bitcoin"} repo={"bitcoin"} pull_number={8149} setFormValues={setFormValues} title={"Segregated witness (Segwit)"} />
           <ClickableOptions
             owner={"bitcoindevkit"}
             repo={"bdk"}
@@ -190,7 +190,7 @@ const FormSection = ({ username }: { username: string | null | undefined }) => {
             repo={"lnd"}
             pull_number={2022}
             setFormValues={setFormValues}
-            title={"htlcswitch: hodl invoice"}
+            title={"Htlcswitch: hodl invoice"}
           />
           <ClickableOptions
             owner={"bitcoin-dev-project"}

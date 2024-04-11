@@ -1,4 +1,4 @@
-import React from "react";
+"use client";
 
 export const ExitArrowIcon = ({ fillColor, width, height }: { fillColor?: string; width?: number; height?: number }) => {
   const darkMode = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
