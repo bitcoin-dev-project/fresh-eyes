@@ -29,16 +29,13 @@ export default function Client() {
         <div className="grid items-center gap-6 lg:grid-cols-[1fr_500px] lg:gap-12 xl:grid-cols-[1fr_550px]">
           <div className="flex flex-col justify-center space-y-4 gap-y-10">
             <div className="space-y-8">
-              <div className="inline-block rounded-lg bg-gray-100 px-3 py-1 text-sm dark:bg-gray-800">
-                Pull Requests
-              </div>
               <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl leading-10">
                 FreshEyes: Review Pull Requests without distractions
               </h1>
               <p className="max-w-[600px] text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-gray-400">
                 FreshEyes is the essential tool for reviewing pull requests
                 without distractions. Clone the PR to your GitHub account and
-                install the FreshEyes bot to focus on the code, not the
+                install the FreshEyes bot to focus on the code, and not on the
                 comments.
               </p>
             </div>
