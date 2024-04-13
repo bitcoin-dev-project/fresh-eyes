@@ -1,7 +1,6 @@
 "use server";
 
 import { auth } from "@/auth";
-import { GITHUB_APP_ID } from '@/config/process';
 import { App } from "@octokit/app";
 import { Octokit } from "octokit";
 
@@ -28,29 +27,16 @@ export async function getInstalledRepositories(): Promise<{ error: string | null
 
   try {
     const installations = await app.octokit.request("GET /app/installations");
+    const currentUser = installations.data.find((x) => x.account?.login.toLowerCase() === session.user.login?.toLowerCase());
 
-    for (const installation of installations.data) {
-      if (installation.account && installation.app_id === Number(GITHUB_APP_ID)) {
-        const installationOctokit = await app.getInstallationOctokit(installation.id);
+    const installationOctokit = await app.getInstallationOctokit(currentUser?.id!);
+    const repos = await installationOctokit.request("GET /installation/repositories");
 
-        try {
-          const repos = await installationOctokit.request("GET /installation/repositories");
-
-          return {
-            success: true,
-            list: repos.data.repositories,
-            error: null,
-          };
-        } catch (repoError) {
-          console.error("Error accessing repositories for installation:", repoError);
-          return {
-            error: "Error accessing installed repositories",
-            list: null,
-            success: false,
-          };
-        }
-      }
-    }
+    return {
+      success: true,
+      list: repos.data.repositories,
+      error: null,
+    };
   } catch (installationError) {
     console.error("Error fetching installations:", installationError);
     return {
@@ -59,12 +45,6 @@ export async function getInstalledRepositories(): Promise<{ error: string | null
       list: null,
     };
   }
-
-  return {
-    error: "Installation not found",
-    success: false,
-    list: null,
-  };
 }
 
 export async function checkIfAppInstalledInRepo({ repoName }: { repoName: string }): Promise<InstallationCheckResult> {
