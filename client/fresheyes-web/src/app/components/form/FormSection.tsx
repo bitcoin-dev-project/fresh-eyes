@@ -28,12 +28,13 @@ const FormSection = ({ username }: { username: string | null | undefined }) => {
 
   const { owner, repo, pull_number } = formValues;
 
-  const processPullRequest = async (clickable: boolean, clickableArgs: PullRequest) => {
+  const processPullRequest = async (e: React.FormEvent) => {
+    e.preventDefault()
     setLink("");
     setError("");
     setLoading({ loader: false, modal: false, isInstalledModal: false });
 
-    if (pull_number === 0 && clickable === false) {
+    if (pull_number === 0 || (typeof pull_number !== 'number' && pull_number === '0')) {
       alert("You must pass a number that is not zero");
       return;
     }
@@ -49,25 +50,8 @@ const FormSection = ({ username }: { username: string | null | undefined }) => {
       setLoading({ loader: false, modal: false, isInstalledModal: true });
       return;
     }
-    let response:
-      | {
-          error: string;
-          data: null;
-        }
-      | {
-          error: null;
-          data: PullRequestResponse;
-        } = { error: "", data: null };
 
-    if (clickable) {
-      response = await processPr({
-        owner: clickableArgs.owner.trim(),
-        repo: clickableArgs.repo.trim(),
-        pull_number: clickableArgs.pull_number,
-      });
-    }
-
-    response = await processPr({
+    const response = await processPr({
       owner: owner.trim(),
       repo: repo.trim(),
       pull_number,
@@ -88,7 +72,7 @@ const FormSection = ({ username }: { username: string | null | undefined }) => {
   return (
     <div className='w-full h-full flex flex-col justify-between items-center gap-10'>
       <div className='w-full  max-w-5xl xl:w-3/4'>
-        <div className='mt-8 flex flex-col gap-6 border-b border-gray-300 bg-gradient-to-b from-zinc-200 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto rounded-md lg:border lg:bg-gray-200 p-4 md:p-8 lg:dark:bg-zinc-800/30'>
+        <form className='mt-8 flex flex-col gap-6 border-b border-gray-300 bg-gradient-to-b from-zinc-200 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto rounded-md lg:border lg:bg-gray-200 p-4 md:p-8 lg:dark:bg-zinc-800/30' onSubmit={processPullRequest}>
           <h1>Please enter the following details to run FreshEyes</h1>
           <section className='flex flex-col md:flex-row gap-4'>
             <CustomInput
@@ -112,11 +96,11 @@ const FormSection = ({ username }: { username: string | null | undefined }) => {
           {error && <p className='text-center text-red-600 font-semibold'>{error}</p>}
           <button
             className='border border-gray-400 dark:hover:bg-black dark:border-white hover:bg-gray-300 dark:hover:opacity-70 rounded-md w-full px-12 py-[16px] whitespace-nowrap font-semibold'
-            onClick={() => processPullRequest(false, { owner: "", repo: "", pull_number: 0 })}
+            type='submit'
           >
             Run FreshEyes
           </button>
-        </div>
+        </form>
 
         {loading.loader || loading.modal ? (
           <Modal
