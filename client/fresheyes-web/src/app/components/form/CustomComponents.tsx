@@ -29,6 +29,7 @@ export const CustomInput = ({ label, placeholder, name, value, type, setFormValu
         type={type}
         value={value}
         onChange={handleChange}
+        required
       />
     </div>
   );
