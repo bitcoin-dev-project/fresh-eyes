@@ -34,12 +34,8 @@ const FormSection = ({ username }: { username: string | null | undefined }) => {
     setError("");
     setLoading({ loader: false, modal: false, isInstalledModal: false });
 
-    if (pull_number === 0 || !pull_number) {
+    if (pull_number === 0 || (typeof pull_number !== 'number' && pull_number === '0')) {
       alert("You must pass a number that is not zero");
-      return;
-    }
-    if (!owner  || !repo) {
-      alert("Please provide the necessary details of the form");
       return;
     }
     setLoading({ loader: true, modal: false, isInstalledModal: false });
