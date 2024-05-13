@@ -65,6 +65,19 @@ export function getIssueBody<T extends Record<string, any>>(arg: T) {
   return { body };
 }
 
+export function generateIssueBody<T extends Array<Record<string, any>>>(arg: T) {
+  const authors = Array.from(new Set(arg.map((item) => item?.user?.login))).length;
+  const comments = arg.length;
+
+  return [
+    {
+      body: `There were ${comments} comments left by ${authors} reviewers for the pull request`,
+      created_at: arg[0].created_at,
+      key: "issue",
+    },
+  ];
+}
+
 export function getPullReviewBody<T extends Record<string, any>>(arg: T, event: "APPROVE" | "REQUEST_CHANGES" | "COMMENT") {
   const formatString = `- comment link ${"`" + arg.html_url + "`"} at ${formatTime(arg.submitted_at as string)}`;
 
@@ -106,14 +119,8 @@ export function extractData<R extends Array<Record<string, any>>, I extends Arra
     };
   });
 
-  const extract_issues = issues.concat(outdatedReviews).map((i) => {
-    const { body } = getIssueBody(i);
-    return {
-      body,
-      created_at: i.created_at,
-      key: "issue",
-    };
-  });
+  const allIssues = issues.concat(outdatedReviews);
+  const extract_issues = generateIssueBody(allIssues);
 
   const extract_pull_reviews = pull_reviews.map((review) => {
     let event: "APPROVE" | "REQUEST_CHANGES" | "COMMENT" = "COMMENT";
