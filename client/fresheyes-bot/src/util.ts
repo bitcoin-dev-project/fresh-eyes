@@ -145,10 +145,10 @@ export function extractData<R extends Array<Record<string, any>>, I extends Arra
     };
   });
 
-  let allComments: Comment[] = [...extract_reviews, ...extract_pull_reviews].sort(
+  const sortComments: Comment[] = [...extract_reviews, ...extract_pull_reviews].sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
 
-  allComments = [...extract_issues, ...allComments];
+  const allComments = [...extract_issues, ...sortComments];
   return { allComments };
 }

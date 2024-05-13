@@ -88,7 +88,14 @@ export = (robot: Probot) => {
       await Promise.all(
         allComments.map(async (val) => {
           /** Create comments according to the time they were added **/
-          if (val.key === "review") {
+          if (val.key === "issue") {
+            await context.octokit.issues.createComment({
+              owner: forked_owner,
+              repo: forked_repo,
+              issue_number: forked_pull_number,
+              body: val.body,
+            });
+          } else if (val.key === "review") {
             await context.octokit.pulls.createReviewComment({
               owner: forked_owner,
               repo: forked_repo,
@@ -98,13 +105,6 @@ export = (robot: Probot) => {
               path: val.path,
               side: val.side,
               line: Number(val.line),
-            });
-          } else if (val.key === "issue") {
-            await context.octokit.issues.createComment({
-              owner: forked_owner,
-              repo: forked_repo,
-              issue_number: forked_pull_number,
-              body: val.body,
             });
           } else if (val.key === "pull_review") {
             await context.octokit.pulls.createReview({
