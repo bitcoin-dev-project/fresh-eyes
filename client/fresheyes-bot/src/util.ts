@@ -66,7 +66,7 @@ export function getIssueBody<T extends Record<string, any>>(arg: T) {
 }
 
 export function generateIssueBody<T extends Array<Record<string, any>>>(arg: T) {
-  const authors = Array.from(new Set(arg.map((item) => item?.user?.login))).length;
+  const authors = new Set(arg.map((item) => item?.user?.login)).size;
   const comments = arg.length;
 
   return [
@@ -145,9 +145,10 @@ export function extractData<R extends Array<Record<string, any>>, I extends Arra
     };
   });
 
-  const allComments: Comment[] = [...extract_reviews, ...extract_issues, ...extract_pull_reviews].sort(
+  let allComments: Comment[] = [...extract_reviews, ...extract_pull_reviews].sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
 
+  allComments = [...extract_issues, ...allComments];
   return { allComments };
 }
