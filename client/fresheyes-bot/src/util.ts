@@ -65,6 +65,21 @@ export function getIssueBody<T extends Record<string, any>>(arg: T) {
   return { body };
 }
 
+export function generateIssueBody<T extends Array<Record<string, any>>>(arg: T) {
+  const authors = new Set(arg.map((item) => item?.user?.login)).size;
+  const comments = arg.length;
+  const commentText = comments === 1 ? "comment" : "comments";
+  const reviewersText = authors === 1 ? "reviewer" : "reviewers";
+
+  return [
+    {
+      body: `There were ${comments} issue ${commentText} left by ${authors} ${reviewersText} for the pull request`,
+      created_at: arg[0].created_at,
+      key: "issue",
+    },
+  ];
+}
+
 export function getPullReviewBody<T extends Record<string, any>>(arg: T, event: "APPROVE" | "REQUEST_CHANGES" | "COMMENT") {
   const formatString = `- comment link ${"`" + arg.html_url + "`"} at ${formatTime(arg.submitted_at as string)}`;
 
@@ -106,41 +121,13 @@ export function extractData<R extends Array<Record<string, any>>, I extends Arra
     };
   });
 
-  const extract_issues = issues.concat(outdatedReviews).map((i) => {
-    const { body } = getIssueBody(i);
-    return {
-      body,
-      created_at: i.created_at,
-      key: "issue",
-    };
-  });
+  const allIssues = [...issues, ...outdatedReviews, ...pull_reviews]
+  const extract_issues = generateIssueBody(allIssues);
 
-  const extract_pull_reviews = pull_reviews.map((review) => {
-    let event: "APPROVE" | "REQUEST_CHANGES" | "COMMENT" = "COMMENT";
-    switch (review.state) {
-      case "APPROVED":
-        event = "APPROVE";
-        break;
-      case "CHANGES_REQUESTED":
-        event = "REQUEST_CHANGES";
-        break;
-      default:
-        event = "COMMENT";
-        break;
-    }
-    const { body } = getPullReviewBody(review, event);
-    return {
-      body,
-      event,
-      commit_id: review.commit_id as string,
-      created_at: review.submitted_at,
-      key: "pull_review",
-    };
-  });
-
-  const allComments: Comment[] = [...extract_reviews, ...extract_issues, ...extract_pull_reviews].sort(
+  const sortComments: Comment[] = extract_reviews.sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
 
+  const allComments: Comment[] = [...extract_issues, ...sortComments];
   return { allComments };
 }
