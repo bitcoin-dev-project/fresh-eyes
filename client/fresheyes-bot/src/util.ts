@@ -149,6 +149,6 @@ export function extractData<R extends Array<Record<string, any>>, I extends Arra
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
 
-  const allComments = [...extract_issues, ...sortComments];
+  const allComments: Comment[] = [...extract_issues, ...sortComments];
   return { allComments };
 }
