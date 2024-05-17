@@ -71,7 +71,7 @@ export function generateIssueBody<T extends Array<Record<string, any>>>(arg: T) 
   const commentText = comments === 1 ? "comment" : "comments";
   const reviewersText = authors === 1 ? "reviewer" : "reviewers";
   const isBitcoinBot = arg.find((item) => item?.user?.login.toLowerCase() === "DrahtBot".toLowerCase());
-  const botComment = isBitcoinBot !== undefined ? "1 bot" : "";
+  const botComment = isBitcoinBot !== undefined ? ", 1 bot" : "";
 
   return [
     {
