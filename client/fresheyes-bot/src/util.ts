@@ -70,10 +70,12 @@ export function generateIssueBody<T extends Array<Record<string, any>>>(arg: T) 
   const comments = arg.length;
   const commentText = comments === 1 ? "comment" : "comments";
   const reviewersText = authors === 1 ? "reviewer" : "reviewers";
+  const isBitcoinBot = arg.find((item) => item?.user?.login.toLowerCase() === "DrahtBot".toLowerCase());
+  const botComment = isBitcoinBot !== undefined ? "1 bot" : "";
 
   return [
     {
-      body: `There were ${comments} ${commentText} left by ${authors} ${reviewersText} for the pull request`,
+      body: `There were ${comments} ${commentText} left by ${authors} ${reviewersText} ${botComment} for the pull request`,
       created_at: arg[0].created_at,
       key: "issue",
     },
@@ -121,12 +123,10 @@ export function extractData<R extends Array<Record<string, any>>, I extends Arra
     };
   });
 
-  const allIssues = [...issues, ...outdatedReviews, ...pull_reviews]
+  const allIssues = [...issues, ...outdatedReviews, ...pull_reviews];
   const extract_issues = generateIssueBody(allIssues);
 
-  const sortComments: Comment[] = extract_reviews.sort(
-    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  );
+  const sortComments: Comment[] = extract_reviews.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
   const allComments: Comment[] = [...extract_issues, ...sortComments];
   return { allComments };
