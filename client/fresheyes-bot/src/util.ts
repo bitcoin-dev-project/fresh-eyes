@@ -65,15 +65,33 @@ export function getIssueBody<T extends Record<string, any>>(arg: T) {
   return { body };
 }
 
-export function generateIssueBody<T extends Array<Record<string, any>>>(arg: T) {
-  const authors = new Set(arg.map((item) => item?.user?.login)).size;
+export function generateIssueBody<T extends Array<Record<string, any>>>(arg: T, prAuthor: string) {
+  const isBitcoinBot = Boolean(arg.find((item) => item?.user?.login.toLowerCase() === "DrahtBot".toLowerCase()));
+
+  const authors = new Set(
+    arg
+      .map((item) => item?.user?.login as string)
+      .filter((author) => {
+        const isPrAuthor = author.toLowerCase() === prAuthor.toLowerCase();
+        const isDrahtBot = author.toLowerCase() === "drahtbot".toLowerCase();
+
+        if (isBitcoinBot) {
+          return !isPrAuthor && !isDrahtBot;
+        }
+
+        return !isPrAuthor;
+      })
+  ).size;
+
   const comments = arg.length;
   const commentText = comments === 1 ? "comment" : "comments";
   const reviewersText = authors === 1 ? "reviewer" : "reviewers";
 
+  const botComment = isBitcoinBot ? "and 1 bot" : "";
+
   return [
     {
-      body: `There were ${comments} issue ${commentText} left by ${authors} ${reviewersText} for the pull request`,
+      body: `There were ${comments} ${commentText} left by ${authors} ${reviewersText} ${botComment} for the pull request`,
       created_at: arg[0].created_at,
       key: "issue",
     },
@@ -103,7 +121,8 @@ export function getPullReviewBody<T extends Record<string, any>>(arg: T, event: 
 export function extractData<R extends Array<Record<string, any>>, I extends Array<Record<string, any>>, T extends Array<Record<string, any>>>(
   reviews: R,
   issues: I,
-  pull_reviews: T
+  pull_reviews: T,
+  prAuthor: string
 ) {
   const { comments, outdatedReviews } = groupCommentsFn(reviews);
 
@@ -121,12 +140,10 @@ export function extractData<R extends Array<Record<string, any>>, I extends Arra
     };
   });
 
-  const allIssues = [...issues, ...outdatedReviews, ...pull_reviews]
-  const extract_issues = generateIssueBody(allIssues);
+  const allIssues = [...issues, ...outdatedReviews, ...pull_reviews];
+  const extract_issues = generateIssueBody(allIssues, prAuthor);
 
-  const sortComments: Comment[] = extract_reviews.sort(
-    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  );
+  const sortComments: Comment[] = extract_reviews.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
   const allComments: Comment[] = [...extract_issues, ...sortComments];
   return { allComments };
