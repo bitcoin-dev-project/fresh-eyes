@@ -66,9 +66,7 @@ export function getIssueBody<T extends Record<string, any>>(arg: T) {
 }
 
 export function generateIssueBody<T extends Array<Record<string, any>>>(arg: T, prAuthor: string) {
-  const isBitcoinBot = arg.find((item) => item?.user?.login.toLowerCase() === "DrahtBot".toLowerCase());
-
-  const shouldFilterDrahtbot = isBitcoinBot !== undefined;
+  const isBitcoinBot = Boolean(arg.find((item) => item?.user?.login.toLowerCase() === "DrahtBot".toLowerCase()));
 
   const authors = new Set(
     arg
@@ -77,7 +75,7 @@ export function generateIssueBody<T extends Array<Record<string, any>>>(arg: T, 
         const isPrAuthor = author.toLowerCase() === prAuthor.toLowerCase();
         const isDrahtBot = author.toLowerCase() === "drahtbot".toLowerCase();
 
-        if (shouldFilterDrahtbot) {
+        if (isBitcoinBot) {
           return !isPrAuthor && !isDrahtBot;
         }
 
@@ -89,7 +87,7 @@ export function generateIssueBody<T extends Array<Record<string, any>>>(arg: T, 
   const commentText = comments === 1 ? "comment" : "comments";
   const reviewersText = authors === 1 ? "reviewer" : "reviewers";
 
-  const botComment = isBitcoinBot !== undefined ? "and 1 bot" : "";
+  const botComment = isBitcoinBot ? "and 1 bot" : "";
 
   return [
     {
