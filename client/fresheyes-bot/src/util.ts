@@ -73,7 +73,7 @@ export function generateIssueBody<T extends Array<Record<string, any>>>(arg: T) 
 
   return [
     {
-      body: `There were ${comments} issue ${commentText} left by ${authors} ${reviewersText} for the pull request`,
+      body: `There were ${comments} ${commentText} left by ${authors} ${reviewersText} for the pull request`,
       created_at: arg[0].created_at,
       key: "issue",
     },
