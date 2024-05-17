@@ -66,14 +66,17 @@ export function getIssueBody<T extends Record<string, any>>(arg: T) {
 }
 
 export function generateIssueBody<T extends Array<Record<string, any>>>(arg: T, prAuthor: string) {
-  const isBitcoinBot = Boolean(arg.find((item) => item?.user?.login.toLowerCase() === "DrahtBot".toLowerCase()));
+  const isBitcoinBot = Boolean(
+    arg.find((item) => item?.user?.login.toLowerCase() === "DrahtBot".toLowerCase() || item?.user?.type.toLowerCase() === "bot")
+  );
+  const isAuthorPresent = Boolean(arg.find((item) => item?.user?.login.toLowerCase() === prAuthor.toLowerCase()));
 
   const authors = new Set(
     arg
-      .map((item) => item?.user?.login as string)
+      .map((item) => item?.user)
       .filter((author) => {
-        const isPrAuthor = author.toLowerCase() === prAuthor.toLowerCase();
-        const isDrahtBot = author.toLowerCase() === "drahtbot".toLowerCase();
+        const isPrAuthor = author?.login.toLowerCase() === prAuthor.toLowerCase();
+        const isDrahtBot = author?.login.toLowerCase() === "drahtbot".toLowerCase() || author?.type.toLowerCase() === "bot";
 
         if (isBitcoinBot) {
           return !isPrAuthor && !isDrahtBot;
@@ -85,13 +88,16 @@ export function generateIssueBody<T extends Array<Record<string, any>>>(arg: T, 
 
   const comments = arg.length;
   const commentText = comments === 1 ? "comment" : "comments";
-  const reviewersText = authors === 1 ? "reviewer" : "reviewers";
+  const reviewersText = authors === 0 ? "" : authors === 1 ? "reviewer" : "reviewers";
+  const isAuthorPresentText = isAuthorPresent ? "and 1 author" : "";
 
-  const botComment = isBitcoinBot ? "and 1 bot" : "";
+  const botComment = isBitcoinBot ? ", 1 bot" : " ";
 
   return [
     {
-      body: `There were ${comments} ${commentText} left by ${authors} ${reviewersText} ${botComment} for the pull request`,
+      body: `There were ${comments} ${commentText} left by ${
+        authors > 0 ? authors : ""
+      } ${reviewersText}${botComment} ${isAuthorPresentText} for this pull request`,
       created_at: arg[0].created_at,
       key: "issue",
     },
