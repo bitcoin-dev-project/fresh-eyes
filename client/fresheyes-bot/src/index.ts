@@ -6,11 +6,7 @@ export = (robot: Probot) => {
 
   robot.on(["pull_request.opened"], async (context) => {
     /**  Get information about the pull request **/
-    const {
-      owner: forked_owner,
-      repo: forked_repo,
-      pull_number: forked_pull_number,
-    } = context.pullRequest();
+    const { owner: forked_owner, repo: forked_repo, pull_number: forked_pull_number } = context.pullRequest();
     const {
       base: {
         label,
@@ -24,14 +20,10 @@ export = (robot: Probot) => {
 
     const splitBranch = ref.split("fresheyes")[0];
     const branch_name = `${splitBranch}fresheyes-${secondLiteral}`;
-    const shouldRun =
-      branch_name ===
-      `${splitBranch}fresheyes-${staging ? "staging" : default_branch}`;
+    const shouldRun = branch_name === `${splitBranch}fresheyes-${staging ? "staging" : default_branch}`;
 
     robot.log({
-      literal: `${splitBranch}fresheyes-${
-        staging ? "staging" : default_branch
-      }`,
+      literal: `${splitBranch}fresheyes-${staging ? "staging" : default_branch}`,
     });
     robot.log({ shouldRun });
 
@@ -50,17 +42,17 @@ export = (robot: Probot) => {
     const pull_number = Number(label.split("-").slice(-1));
 
     if (!owner || !repo || !pull_number) {
-      throw Error(
-        `Could not get parent repo information ${owner} ${repo} ${pull_number}`
-      );
+      throw Error(`Could not get parent repo information ${owner} ${repo} ${pull_number}`);
     }
 
-    const { data: reviewComments } =
-      await context.octokit.pulls.listReviewComments({
-        owner,
-        repo,
-        pull_number,
-      });
+    const { data } = await context.octokit.pulls.get({ owner, repo, pull_number });
+    const prAuthor = data.user?.login as string;
+
+    const { data: reviewComments } = await context.octokit.pulls.listReviewComments({
+      owner,
+      repo,
+      pull_number,
+    });
 
     const { data: issueComments } = await context.octokit.issues.listComments({
       owner,
@@ -79,11 +71,7 @@ export = (robot: Probot) => {
         return;
       }
 
-      const { allComments } = extractData(
-        reviewComments,
-        issueComments,
-        approvalComments
-      );
+      const { allComments } = extractData(reviewComments, issueComments, approvalComments, prAuthor);
 
       await Promise.all(
         allComments.map(async (val) => {
