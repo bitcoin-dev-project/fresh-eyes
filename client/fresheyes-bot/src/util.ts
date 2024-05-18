@@ -108,6 +108,15 @@ export function generateIssueBody<T extends Array<Record<string, any>>>(
   const authors = new Set(
     arg.filter(isRegularAuthor).map((item) => item.user.login.toLowerCase())
   ).size;
+  const uniqueBots = new Set(
+    arg
+      .filter(
+        (item) =>
+          userTypeCompare(item, "bot") ||
+          (userLoginCompare(item, "DrahtBot") && item.body.trim() !== "")
+      )
+      .map((item) => item.user.login.toLowerCase())
+  ).size;
 
   const nonBotCommentCount = arg.filter(
     (item) => isRegularAuthor(item) && item.body.trim() !== ""
@@ -127,12 +136,13 @@ export function generateIssueBody<T extends Array<Record<string, any>>>(
       ? "reviewer"
       : "reviewers";
 
+  const botCommentText = uniqueBots === 1 ? "1 bot" : `${uniqueBots} bots`;
   const botComment = isBitcoinBot
     ? isAuthorPresent
-      ? ", 1 bot"
+      ? `, ${botCommentText}`
       : isReviewWithoutComment || authors === 0
-      ? "1 bot"
-      : "and 1 bot"
+      ? botCommentText
+      : `and ${botCommentText}`
     : "";
 
   const authorText =
