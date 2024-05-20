@@ -10,6 +10,7 @@ type Comment = {
 };
 
 export function groupCommentsFn<T extends Array<Record<string, any>>>(data: T) {
+  if(!data) return { comments:[], outdatedReviews: [] }
   const outdatedReviews = data
     .filter((x) => x.line === null)
     .map((i) => ({ ...i, outdated: true }));
@@ -44,6 +45,7 @@ function formatTime(arg: string) {
 export function getReviewBody<T extends Array<Array<Record<string, any>>>>(
   value: T
 ) {
+  if(!value) return { body: '', comment: [] as any }
   const list = value
     .flat()
     .map((x) => ({ html_url: x.html_url, created_at: x.created_at }));
@@ -88,6 +90,7 @@ export function generateIssueBody<T extends Array<Record<string, any>>>(
   arg: T,
   prAuthor: string
 ) {
+  if(!arg) return []
   const userLoginCompare = (item: Record<string, any>, name: string) =>
     item?.user?.login.toLowerCase() === name.toLowerCase();
 
