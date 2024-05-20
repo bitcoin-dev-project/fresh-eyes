@@ -10,7 +10,10 @@ type Comment = {
 };
 
 export function groupCommentsFn<T extends Array<Record<string, any>>>(data: T) {
-  const outdatedReviews = data.filter((x) => x.line === null).map((i) => ({ ...i, outdated: true }));
+  if(!data) return { comments:[], outdatedReviews: [] }
+  const outdatedReviews = data
+    .filter((x) => x.line === null)
+    .map((i) => ({ ...i, outdated: true }));
 
   const comments: Record<string, Array<typeof data>> = data
     .filter((f) => f.line !== null)
@@ -39,67 +42,137 @@ function formatTime(arg: string) {
   return `${year}/${month}/${day}, ${hours}:${minutes}:${seconds} UTC`;
 }
 
-export function getReviewBody<T extends Array<Array<Record<string, any>>>>(value: T) {
-  const list = value.flat().map((x) => ({ html_url: x.html_url, created_at: x.created_at }));
+export function getReviewBody<T extends Array<Array<Record<string, any>>>>(
+  value: T
+) {
+  if(!value) return { body: '', comment: [] as any }
+  const list = value
+    .flat()
+    .map((x) => ({ html_url: x.html_url, created_at: x.created_at }));
 
   const formatString = list
     .map((val) => {
-      return `- comment link ${"`" + val.html_url + "`"} at ${formatTime(val.created_at)}`;
+      return `- comment link ${"`" + val.html_url + "`"} at ${formatTime(
+        val.created_at
+      )}`;
     })
     .join("\n");
 
-  const body = `${value.length === 1 ? "An author" : `${value.length} authors`} commented here with:\n\n${formatString}.`;
+  const body = `${
+    value.length === 1 ? "An author" : `${value.length} authors`
+  } commented here with:\n\n${formatString}.`;
 
-  const comment = value.flat().sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
+  const comment = value
+    .flat()
+    .sort(
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    )[0];
 
   return { body, comment };
 }
 
 export function getIssueBody<T extends Record<string, any>>(arg: T) {
-  const formatString = `- comment link ${"`" + arg.html_url + "`"} at ${formatTime(arg.created_at as string)}`;
+  const formatString = `- comment link ${
+    "`" + arg.html_url + "`"
+  } at ${formatTime(arg.created_at as string)}`;
 
   const outdatedComment = `This is an **OUTDATED** review comment  as the original pull request may have been rebased or force-pushed\n`;
 
-  const body = `${arg?.outdated ? outdatedComment : "An author commented here with:"}\n\n${formatString}.`;
+  const body = `${
+    arg?.outdated ? outdatedComment : "An author commented here with:"
+  }\n\n${formatString}.`;
 
   return { body };
 }
 
-export function generateIssueBody<T extends Array<Record<string, any>>>(arg: T, prAuthor: string) {
-  const isBitcoinBot = Boolean(arg.find((item) => item?.user?.login.toLowerCase() === "DrahtBot".toLowerCase()));
+export function generateIssueBody<T extends Array<Record<string, any>>>(
+  arg: T,
+  prAuthor: string
+) {
+  if(!arg) return []
+  const userLoginCompare = (item: Record<string, any>, name: string) =>
+    item?.user?.login.toLowerCase() === name.toLowerCase();
+
+  const userTypeCompare = (item: Record<string, any>, type: string) =>
+    item?.user?.type.toLowerCase() === type.toLowerCase();
+
+  const isBitcoinBot = arg.some(
+    (item) => userLoginCompare(item, "DrahtBot") || userTypeCompare(item, "bot")
+  );
+
+  const isAuthorPresent = arg.some((item) => userLoginCompare(item, prAuthor));
+
+  const isRegularAuthor = (item: Record<string, any>) =>
+    !userLoginCompare(item, prAuthor) &&
+    !userLoginCompare(item, "DrahtBot") &&
+    !userTypeCompare(item, "bot");
 
   const authors = new Set(
+    arg.filter(isRegularAuthor).map((item) => item.user.login.toLowerCase())
+  ).size;
+  const uniqueBots = new Set(
     arg
-      .map((item) => item?.user?.login as string)
-      .filter((author) => {
-        const isPrAuthor = author.toLowerCase() === prAuthor.toLowerCase();
-        const isDrahtBot = author.toLowerCase() === "drahtbot".toLowerCase();
-
-        if (isBitcoinBot) {
-          return !isPrAuthor && !isDrahtBot;
-        }
-
-        return !isPrAuthor;
-      })
+      .filter(
+        (item) =>
+          userTypeCompare(item, "bot") ||
+          (userLoginCompare(item, "DrahtBot") && item.body.trim() !== "")
+      )
+      .map((item) => item.user.login.toLowerCase())
   ).size;
 
-  const comments = arg.length;
-  const commentText = comments === 1 ? "comment" : "comments";
-  const reviewersText = authors === 1 ? "reviewer" : "reviewers";
+  const nonBotCommentCount = arg.filter(
+    (item) => isRegularAuthor(item) && item.body.trim() !== ""
+  ).length;
 
-  const botComment = isBitcoinBot ? "and 1 bot" : "";
+  const allNonEmptyCommentsCount = arg.filter(
+    (item) => item.body.trim() !== ""
+  ).length;
+
+  const isReviewWithoutComment = nonBotCommentCount === 0 && authors >= 1;
+
+  const commentText = allNonEmptyCommentsCount === 1 ? "comment" : "comments";
+  const reviewersText =
+    isReviewWithoutComment || authors === 0
+      ? ""
+      : authors === 1
+      ? "reviewer"
+      : "reviewers";
+
+  const botCommentText = uniqueBots === 1 ? "1 bot" : `${uniqueBots} bots`;
+  const botComment = isBitcoinBot
+    ? isAuthorPresent
+      ? `, ${botCommentText}`
+      : isReviewWithoutComment || authors === 0
+      ? botCommentText
+      : `and ${botCommentText}`
+    : "";
+
+  const authorText =
+    isReviewWithoutComment || authors === 0 ? "" : ` ${authors}`;
+
+  const issueBody = `There ${
+    allNonEmptyCommentsCount <= 1 ? "was" : "were"
+  } ${allNonEmptyCommentsCount} ${commentText} left by${authorText} ${reviewersText}${botComment} ${
+    isAuthorPresent ? "and the author" : ""
+  } for this pull request`;
 
   return [
     {
-      body: `There were ${comments} ${commentText} left by ${authors} ${reviewersText} ${botComment} for the pull request`,
-      created_at: arg[0].created_at,
+      body: issueBody,
+      created_at: arg[0]?.created_at || new Date().toISOString(),
       key: "issue",
     },
   ];
 }
 
-export function getPullReviewBody<T extends Record<string, any>>(arg: T, event: "APPROVE" | "REQUEST_CHANGES" | "COMMENT") {
-  const formatString = `- comment link ${"`" + arg.html_url + "`"} at ${formatTime(arg.submitted_at as string)}`;
+export function getPullReviewBody<T extends Record<string, any>>(
+  arg: T,
+  event: "APPROVE" | "REQUEST_CHANGES" | "COMMENT"
+) {
+  const formatString = `- comment link ${
+    "`" + arg.html_url + "`"
+  } at ${formatTime(arg.submitted_at as string)}`;
 
   let comment = "";
 
@@ -118,12 +191,11 @@ export function getPullReviewBody<T extends Record<string, any>>(arg: T, event: 
   return { body };
 }
 
-export function extractData<R extends Array<Record<string, any>>, I extends Array<Record<string, any>>, T extends Array<Record<string, any>>>(
-  reviews: R,
-  issues: I,
-  pull_reviews: T,
-  prAuthor: string
-) {
+export function extractData<
+  R extends Array<Record<string, any>>,
+  I extends Array<Record<string, any>>,
+  T extends Array<Record<string, any>>
+>(reviews: R, issues: I, pull_reviews: T, prAuthor: string) {
   const { comments, outdatedReviews } = groupCommentsFn(reviews);
 
   const extract_reviews = Object.entries(comments).map(([key, value]) => {
@@ -143,7 +215,10 @@ export function extractData<R extends Array<Record<string, any>>, I extends Arra
   const allIssues = [...issues, ...outdatedReviews, ...pull_reviews];
   const extract_issues = generateIssueBody(allIssues, prAuthor);
 
-  const sortComments: Comment[] = extract_reviews.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  const sortComments: Comment[] = extract_reviews.sort(
+    (a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
 
   const allComments: Comment[] = [...extract_issues, ...sortComments];
   return { allComments };
