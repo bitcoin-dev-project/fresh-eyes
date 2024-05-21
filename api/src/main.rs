@@ -54,7 +54,6 @@ async fn process_pull_requests(req: HttpRequest, pr: web::Json<PullRequest>) -> 
         }
     };
 
-
     // Fetch the desired pull request
     let pull_request_instance = LibPullRequest::from_pull_number(
         &pull_request.owner,
@@ -125,10 +124,10 @@ async fn process_pull_requests(req: HttpRequest, pr: web::Json<PullRequest>) -> 
 async fn main() -> std::io::Result<()> {
     dotenv().ok(); // load the environment variables
 
-    let port: u16 = env::var("SERVER_PORT")
+    let port: u16 = env::var("PORT")
         .unwrap_or_else(|_| String::from("8080")) // provide a default value
         .parse()
-        .expect("SERVER_PORT must be a number");
+        .expect("PORT must be a number");
     println!("Server is running on port {}", port);
 
     HttpServer::new(move || {

@@ -1,3 +1,4 @@
+use regex::Regex;
 use reqwest::{
     header::{self, HeaderMap, AUTHORIZATION},
     Client, StatusCode,
@@ -372,35 +373,101 @@ pub async fn fetch_github_data(
     Ok(response.json().await?)
 }
 
-pub fn modify_pull_request_body(args: Option<&str>) -> String {
+/// Modify the body of a pull request to display links, images, and code blocks in a format that
+/// can be displayed in a code block without being rendered as a link.
+/// This is useful for displaying the body of a pull request without the links referencing the
+/// actual pull request.
+/// For example, a link to a pull request will be displayed as `#123` instead of a clickable link.
+/// Images and code blocks will be converted to markdown format.
+pub fn modify_pull_request_body(args: Option<&str>) -> Result<String, regex::Error> {
     if let Some(args) = args {
-        let body = args
-            .split_whitespace()
-            .map(|word| {
-                if word.starts_with("#")
-                    || word.starts_with("@")
-                    || word.starts_with("https://github.com")
-                {
-                    format!("`{}`", word.trim())
-                } else {
-                    word.to_string()
-                }
+        // Regex for finding and replacing code blocks, links, and images
+        let code_block_re = Regex::new(r"`([^`]*)`")?;
+        let github_link_re = Regex::new(r"https://github\.com/[^\s\)]+")?;
+        let markdown_link_re = Regex::new(r"\[([^\]]+)\]\((https://github\.com/[^\)]+)\)")?;
+        let issue_pr_ref_re = Regex::new(r"#\d+")?;
+        let img_tag_re = Regex::new(r#"<img\s+[^>]*src="(https://github\.com/[^"]+)"[^>]*>"#)?;
+        let markdown_img_re = Regex::new(r"!\[([^\]]*)s\]\((https://github\.com/[^\)]+)\)")?;
+
+        let mut placeholders = Vec::new();
+        let mut body = args.to_owned();
+
+        // Temporarily replace <img> tags with placeholders
+        body = img_tag_re
+            .replace_all(&body, |caps: &regex::Captures| {
+                let placeholder = format!("IMGPLACEHOLDER{}", placeholders.len());
+                placeholders.push(caps[0].to_string());
+                placeholder
             })
-            .collect::<Vec<String>>()
-            .join(" ");
-        body
+            .to_string();
+
+        // Temporarily replace Markdown images with placeholders
+        body = markdown_img_re
+            .replace_all(&body, |caps: &regex::Captures| {
+                let placeholder = format!("MARKDOWNIMGPLACEHOLDER{}", placeholders.len());
+                placeholders.push(caps[0].to_string());
+                placeholder
+            })
+            .to_string();
+
+        // Process code blocks and add placeholders
+        body = code_block_re
+            .replace_all(&body, |caps: &regex::Captures| {
+                let placeholder = format!("CODEBLOCK{}", placeholders.len());
+                placeholders.push(caps[0].to_string());
+                placeholder
+            })
+            .to_string();
+
+        // Replace GitHub links not in markdown format with markdown format
+        body = github_link_re.replace_all(&body, "`$0`").to_string();
+
+        // Replace markdown links with a format that can be displayed in a code block
+        // without being rendered as a link
+        // e.g. [link text](link) -> link text: (`link`)
+        body = markdown_link_re
+            .replace_all(&body, |caps: &regex::Captures| {
+                format!("{}: (`{}`)", &caps[1], &caps[2])
+            })
+            .to_string();
+        body = issue_pr_ref_re.replace_all(&body, "`$0`").to_string();
+
+        // Restore placeholders for images and inline code blocks
+        for (i, block) in placeholders.iter().enumerate() {
+            body = body.replace(&format!("IMGPLACEHOLDER{}", i), &block);
+            body = body.replace(&format!("MARKDOWNIMGPLACEHOLDER{}", i), &block);
+            body = body.replace(&format!("CODEBLOCK{}", i), &block);
+        }
+
+        Ok(body)
     } else {
-        String::new()
+        Ok(String::new())
     }
 }
 
 pub fn extract_pr_details(data: &Value) -> PullRequestDetails {
     let base_sha = data["base"]["sha"].as_str().unwrap_or_default().to_string();
     let head_sha = data["head"]["sha"].as_str().unwrap_or_default().to_string();
-    let title = data["title"].as_str().unwrap_or_default().to_string();
-    let body = data["body"].as_str().unwrap_or_default().to_string();
+    let title = format!("[FreshEyes] {}", data["title"].as_str().unwrap_or_default());
+    let original_author = data["user"]["login"].as_str().unwrap_or_default();
+    let original_pr_name = data["title"].as_str().unwrap_or_default();
+    let issue_number = data["number"].as_u64().unwrap_or_default();
+    let org = data["base"]["repo"]["owner"]["login"]
+        .as_str()
+        .unwrap_or_default();
+    let repo = data["base"]["repo"]["name"].as_str().unwrap_or_default();
 
-    let modified_body = modify_pull_request_body(Some(&body));
+    let body = format!("The author **{}** wrote the following PR called **{}**, issue number **{}** in **{}/{}** cloned by FreshEyes below:\n\n{}",
+                       original_author,
+                       original_pr_name,
+                       issue_number,
+                       org,
+                       repo,
+                       data["body"].as_str().unwrap_or_default()
+    );
+
+    // if modification of the body fails, return the original body
+    let modified_body = modify_pull_request_body(Some(&body)).unwrap_or_else(|_| body);
 
     let mut base_ref = String::new();
     let mut head_ref = String::new();
@@ -425,7 +492,7 @@ pub fn extract_pr_details(data: &Value) -> PullRequestDetails {
                 data["head"]["ref"].as_str().unwrap_or_default().to_string(),
                 data["number"].as_u64().unwrap_or_default().to_string()
             );
-        } else {
+        } else if environment == "production" {
             base_ref = format!(
                 "{}-fresheyes-{}-{}",
                 data["base"]["user"]["login"]

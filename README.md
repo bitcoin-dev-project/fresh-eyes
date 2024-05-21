@@ -1,21 +1,33 @@
-# FRESHEYES
+# FreshEyes
 
-## Overview
+FreshEyes is a tool designed to streamline the code review process. It helps you review a PR without getting distracted by the comments in the code.
 
-This tool is designed to streamline the code review process by integrating with GitHub's API. It checks out a pull request (PR) branch, generates patches, and inserts GNU patch(1)-style diff comments, indicating where previous reviewers have left comments. This allows a user to conveniently review a pull request without distractions of the review comments, enhancing the efficiency of the review process.
+## Table of Contents
 
-It is targeted to noobs to a project who wants to understand the project code base better by reviewing past and present pull request without comment distractions.
+- [About](#about)
+- [How It Works](#how-it-works)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Contributing](#contributing)
+- [Motivation](#motivation)
 
-The project consists of a Rust-based CLI tool and an API to help client to connect to our core functions.
+## About
+
+This project clones your repo of interest to your GitHub account and installs a bot to clone the PR without the distractions of comments. It consists of a Rust-based CLI tool and an API to help clients connect to our core functions.
+
+## How It Works
+
+FreshEyes integrates with GitHub's API to streamline the code review process. It checks out a pull request (PR) branch, generates patches, and inserts GNU patch(1)-style diff comments, indicating where previous reviewers have left comments. This allows a user to conveniently review a pull request without the distractions of the review comments, enhancing the efficiency of the review process.
 
 ## Installation
 
-- The project implements a cli application, an API server and a Next.js client.
+The project implements a CLI application, an API server, and a Next.js client. Follow the steps below to install and set up FreshEyes:
 
 ### Prerequisites
 
 - Rust and Cargo (latest stable version): [Install Rust](https://www.rust-lang.org/tools/install)
 - Git (for cloning the repository)
+- Node.js (for running the client)
 
 ### Steps
 
@@ -26,7 +38,9 @@ The project consists of a Rust-based CLI tool and an API to help client to conne
     cd fresheyes-ref-impl
     ```
 
-### Using the CLI
+### Usage
+
+### CLI
 
 ### Configuring Authorization
 
@@ -104,7 +118,7 @@ Contributions to this project are welcome! Please follow these steps:
 
 1. Fork the repository.
 2. Create an issue you want to work on.
-3. Create a new branch or your feature or fix.
+3. Create a new branch or your feature or fix from the staging branch.
 4. Commit your changes.
 5. Push to the branch.
 6. Create a new Pull Request.

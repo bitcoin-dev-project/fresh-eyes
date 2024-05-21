@@ -583,6 +583,7 @@ dependencies = [
  "futures-util",
  "mockito",
  "once_cell",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",

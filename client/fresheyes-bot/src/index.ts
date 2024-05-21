@@ -15,14 +15,27 @@ export = (robot: Probot) => {
       },
     } = context.payload.pull_request;
 
-    const branch_name = ref.split("-").slice(0, 3).join("-");
-    const shouldRun = branch_name === `${forked_repo}-fresheyes-${staging ? "staging" : default_branch}`;
+    const firstLiteral = ref.split("fresheyes")[1];
+    const secondLiteral = firstLiteral.split("-").slice(1, 2).join("-");
+
+    const splitBranch = ref.split("fresheyes")[0];
+    const branch_name = `${splitBranch}fresheyes-${secondLiteral}`;
+    const shouldRun = branch_name === `${splitBranch}fresheyes-${staging ? "staging" : default_branch}`;
+
+    robot.log({
+      literal: `${splitBranch}fresheyes-${staging ? "staging" : default_branch}`,
+    });
+    robot.log({ shouldRun });
+
     if (!shouldRun) {
       robot.log("Branch is not the correct branch");
       return;
     }
 
-    const res = await context.octokit.repos.get({ owner: forked_owner, repo: forked_repo });
+    const res = await context.octokit.repos.get({
+      owner: forked_owner,
+      repo: forked_repo,
+    });
 
     const owner = res.data.parent?.owner.login;
     const repo = res.data.parent?.name;
@@ -32,21 +45,45 @@ export = (robot: Probot) => {
       throw Error(`Could not get parent repo information ${owner} ${repo} ${pull_number}`);
     }
 
-    const { data: reviewComments } = await context.octokit.pulls.listReviewComments({ owner, repo, pull_number });
+    const { data } = await context.octokit.pulls.get({ owner, repo, pull_number });
+    const prAuthor = data.user?.login as string;
 
-    const { data: issueComments } = await context.octokit.issues.listComments({ owner, repo, issue_number: pull_number });
+    const { data: reviewComments } = await context.octokit.pulls.listReviewComments({
+      owner,
+      repo,
+      pull_number,
+    });
+
+    const { data: issueComments } = await context.octokit.issues.listComments({
+      owner,
+      repo,
+      issue_number: pull_number,
+    });
+
+    const { data: approvalComments } = await context.octokit.pulls.listReviews({
+      owner,
+      repo,
+      pull_number,
+    });
 
     try {
-      if (!reviewComments && !issueComments) {
+      if (!reviewComments && !issueComments && !approvalComments) {
         return;
       }
 
-      const { allComments } = extractData(reviewComments, issueComments);
+      const { allComments } = extractData(reviewComments, issueComments, approvalComments, prAuthor);
 
       await Promise.all(
         allComments.map(async (val) => {
           /** Create comments according to the time they were added **/
-          if (val.key === "review") {
+          if (val.key === "issue") {
+            await context.octokit.issues.createComment({
+              owner: forked_owner,
+              repo: forked_repo,
+              issue_number: forked_pull_number,
+              body: val.body,
+            });
+          } else if (val.key === "review") {
             await context.octokit.pulls.createReviewComment({
               owner: forked_owner,
               repo: forked_repo,
@@ -57,12 +94,14 @@ export = (robot: Probot) => {
               side: val.side,
               line: Number(val.line),
             });
-          } else if (val.key === "issue") {
-            await context.octokit.issues.createComment({
+          } else if (val.key === "pull_review") {
+            await context.octokit.pulls.createReview({
               owner: forked_owner,
               repo: forked_repo,
-              issue_number: forked_pull_number,
+              pull_number: forked_pull_number,
               body: val.body,
+              commit_id: val.commit_id,
+              event: val.event,
             });
           } else {
             return;
