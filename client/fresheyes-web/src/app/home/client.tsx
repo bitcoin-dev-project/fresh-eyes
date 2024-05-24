@@ -51,7 +51,7 @@ export default function Client() {
                 href="https://github.com/bitcoin-dev-project/fresh-eyes"
                 target="_blank"
               >
-                Github
+                GitHub
               </Link>
             </div>
           </div>
